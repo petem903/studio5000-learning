@@ -1,0 +1,1233 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="32.05" TargetName="Beginner_Guide" TargetType="Controller" ContainsContext="false" Owner="Training" ExportDate="Wed Jun 24 10:00:00 2026" ExportOptions="NoRawData L5KData DecoratedData ForceProtectedEncoding AllProjDocTrans">
+<Controller Use="Target" Name="Beginner_Guide" ProcessorType="1756-L72" MajorRev="37" MinorRev="11" TimeSlice="20" ShareUnusedTimeSlice="1" ProjectCreationDate="Wed Jun 24 09:00:00 2026" LastModifiedDate="Wed Jun 24 10:00:00 2026" SFCExecutionControl="CurrentActive" SFCRestartPosition="MostRecent" SFCLastScan="DontScan" ProjectSN="16#0000_0000" MatchProjectToController="false" CanUseRPIFromProducer="false" InhibitAutomaticFirmwareUpdate="0" PassThroughConfiguration="EnabledWithAppend" DownloadProjectDocumentationAndExtendedProperties="true" DownloadProjectCustomProperties="true" ReportMinorOverflow="false">
+<RedundancyInfo Enabled="false" KeepTestEditsOnSwitchOver="false" IOMemoryPadPercentage="90" DataTablePadPercentage="50"/>
+<Security Code="0" ChangesToDetect="16#ffff_ffff_ffff_ffff"/>
+<SafetyInfo/>
+
+<!-- ============================================================
+     USER-DEFINED DATA TYPES (UDTs)
+     Custom structures that group related data together.
+     ============================================================ -->
+<DataTypes Use="Context">
+<DataType Use="Target" Name="udtPartRecord" Family="NoFamily" Class="User">
+<Description><![CDATA[Part inspection record - groups all data about a single inspected part into one reusable structure. Demonstrates mixed data types in a UDT.]]></Description>
+<Members>
+<Member Name="PartID" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Unique part identifier (1-999999)]]></Description>
+</Member>
+<Member Name="Weight" DataType="REAL" Dimension="0" Radix="Float" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Measured part weight in grams]]></Description>
+</Member>
+<Member Name="TargetWeight" DataType="REAL" Dimension="0" Radix="Float" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Target weight specification]]></Description>
+</Member>
+<Member Name="Tolerance" DataType="REAL" Dimension="0" Radix="Float" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Weight tolerance (+/- grams)]]></Description>
+</Member>
+<Member Name="InspectionResult" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[0=Pending 1=Pass 2=Fail_Under 3=Fail_Over 4=Fail_Other]]></Description>
+</Member>
+<Member Name="InspectionTime_ms" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Inspection duration in milliseconds]]></Description>
+</Member>
+<Member Name="Timestamp" DataType="DINT" Dimension="7" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Timestamp array: [Year,Month,Day,Hour,Minute,Second,Millisecond]]]></Description>
+</Member>
+</Members>
+</DataType>
+
+<DataType Use="Target" Name="udtMotorStarter" Family="NoFamily" Class="User">
+<Description><![CDATA[Motor starter status block - groups all motor control and feedback signals. Used as backing tag for aoiMotorStarter AOI.]]></Description>
+<Members>
+<Member Name="RunCommand" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Run command from logic]]></Description>
+</Member>
+<Member Name="Running" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Motor running feedback]]></Description>
+</Member>
+<Member Name="Faulted" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Motor fault detected]]></Description>
+</Member>
+<Member Name="OverloadTrip" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Overload protection tripped]]></Description>
+</Member>
+<Member Name="RunHours" DataType="REAL" Dimension="0" Radix="Float" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Accumulated run time in hours]]></Description>
+</Member>
+<Member Name="StartCount" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Number of motor starts]]></Description>
+</Member>
+<Member Name="FaultCode" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Fault code: 0=OK 1=Overload 2=ContactorFail 3=FeedbackTimeout]]></Description>
+</Member>
+</Members>
+</DataType>
+</DataTypes>
+
+<!-- ============================================================
+     ADD-ON INSTRUCTION DEFINITION (AOI)
+     Reusable motor starter block - the "function" of PLC programming.
+     ============================================================ -->
+<AddOnInstructionDefinitions Use="Context">
+<AddOnInstructionDefinition Use="Target" Name="aoiMotorStarter" Class="Standard" Revision="1.0" Vendor="Training" ExecutePrescan="false" ExecutePostscan="false" ExecuteEnableInFalse="false" CreatedDate="2026-06-24T09:00:00.000Z" CreatedBy="Training" EditedDate="2026-06-24T09:00:00.000Z" EditedBy="Training" SoftwareRevision="v32.05">
+<Description><![CDATA[Reusable motor starter control block. Demonstrates AOI concepts: Input parameters (Start, Stop, FaultReset), Output parameters (Running, Faulted), InOut parameters (backing UDT tag), local tags, and internal logic routines. One AOI instance can be reused for multiple motors.]]></Description>
+<Parameters>
+<Parameter Name="EnableIn" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="false" Visible="false" ExternalAccess="Read Only">
+<Description><![CDATA[Enable Input - System Defined Parameter]]></Description>
+</Parameter>
+<Parameter Name="EnableOut" TagType="Base" DataType="BOOL" Usage="Output" Radix="Decimal" Required="false" Visible="false" ExternalAccess="Read Only">
+<Description><![CDATA[Enable Output - System Defined Parameter]]></Description>
+</Parameter>
+<Parameter Name="Start" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[Rising edge starts the motor]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</Parameter>
+<Parameter Name="Stop" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[Rising edge stops the motor]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</Parameter>
+<Parameter Name="FaultReset" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[Rising edge clears fault and allows restart]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</Parameter>
+<Parameter Name="FeedbackRun" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[Motor running feedback from contactor auxiliary contact]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</Parameter>
+<Parameter Name="Overload" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[Overload relay input - TRUE = overloaded]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</Parameter>
+<Parameter Name="FeedbackTimeout_ms" TagType="Base" DataType="DINT" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[Maximum time (ms) to wait for feedback after start command before faulting]]></Description>
+<DefaultData Format="L5K"><![CDATA[2000]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="2000"/></DefaultData>
+</Parameter>
+<Parameter Name="Running" TagType="Base" DataType="BOOL" Usage="Output" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[TRUE = motor is running (feedback confirmed)]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</Parameter>
+<Parameter Name="Faulted" TagType="Base" DataType="BOOL" Usage="Output" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[TRUE = motor is faulted and cannot start]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</Parameter>
+<Parameter Name="Status" TagType="Base" DataType="udtMotorStarter" Usage="InOut" Required="true" Visible="true" Constant="false">
+<Description><![CDATA[Backing UDT tag that holds accumulated data (RunHours, StartCount, etc.)]]></Description>
+</Parameter>
+</Parameters>
+<LocalTags>
+<LocalTag Name="FeedbackTimer" DataType="TIMER" Radix="Decimal" ExternalAccess="None">
+<Description><![CDATA[Timer to detect feedback timeout fault]]></Description>
+</LocalTag>
+<LocalTag Name="StartONS" DataType="BOOL" Radix="Decimal" ExternalAccess="None">
+<Description><![CDATA[One-shot for start command]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</LocalTag>
+<LocalTag Name="RunHourTimer" DataType="TIMER" Radix="Decimal" ExternalAccess="None">
+<Description><![CDATA[Accumulates seconds for run-hour calculation]]></Description>
+</LocalTag>
+<LocalTag Name="HourAccum" DataType="REAL" Radix="Float" ExternalAccess="None">
+<Description><![CDATA[Accumulator for fractional hour calculation]]></Description>
+<DefaultData Format="L5K"><![CDATA[0.0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="REAL" Radix="Float" Value="0.0"/></DefaultData>
+</LocalTag>
+</LocalTags>
+<Routines>
+<Routine Name="Logic" Type="RLL">
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment><![CDATA[Seal-in circuit: Start latches RunCommand, Stop or Fault breaks the seal. Classic motor control pattern.]]></Comment>
+<Text><![CDATA[XIC(Start)ONS(StartONS)[XIC(Status.RunCommand),XIC(StartONS)]XIO(Stop)XIO(Faulted)OTE(Status.RunCommand);]]></Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment><![CDATA[Feedback timeout detection: if commanded to run but no feedback within FeedbackTimeout_ms, declare fault.]]></Comment>
+<Text><![CDATA[XIC(Status.RunCommand)XIO(FeedbackRun)TON(FeedbackTimer,FeedbackTimeout_ms,?);]]></Text>
+</Rung>
+<Rung Number="2" Type="N">
+<Comment><![CDATA[Running status: TRUE when feedback confirms motor is running.]]></Comment>
+<Text><![CDATA[XIC(Status.RunCommand)XIC(FeedbackRun)OTE(Running);]]></Text>
+</Rung>
+<Rung Number="3" Type="N">
+<Comment><![CDATA[Fault detection: overload trip OR feedback timeout OR general fault. Latched until reset.]]></Comment>
+<Text><![CDATA[[XIC(Overload),XIC(FeedbackTimer.DN),XIC(Status.Faulted)]OTL(Faulted);]]></Text>
+</Rung>
+<Rung Number="4" Type="N">
+<Comment><![CDATA[Fault code assignment (CPT for conditional logic in math). 0=OK, 1=Overload, 2=FeedbackFail.]]></Comment>
+<Text><![CDATA[XIC(Overload)MOV(1,Status.FaultCode);]]></Text>
+</Rung>
+<Rung Number="5" Type="N">
+<Comment><![CDATA[Fault code 2 = feedback timeout]]></Comment>
+<Text><![CDATA[XIC(FeedbackTimer.DN)MOV(2,Status.FaultCode);]]></Text>
+</Rung>
+<Rung Number="6" Type="N">
+<Comment><![CDATA[Fault reset: clear all fault states on rising edge of FaultReset.]]></Comment>
+<Text><![CDATA[XIC(FaultReset)OTU(Faulted)MOV(0,Status.FaultCode);]]></Text>
+</Rung>
+<Rung Number="7" Type="N">
+<Comment><![CDATA[Count motor starts (each rising edge of RunCommand).]]></Comment>
+<Text><![CDATA[XIC(Status.RunCommand)ONS(StartONS)CTU(Status.StartCount,?,?);]]></Text>
+</Rung>
+<Rung Number="8" Type="N">
+<Comment><![CDATA[Run hour accumulation: run a 1-second timer while Running, accumulate in REAL. 3600 seconds = 1 hour.]]></Comment>
+<Text><![CDATA[XIC(Running)TON(RunHourTimer,1000,?);]]></Text>
+</Rung>
+<Rung Number="9" Type="N">
+<Comment><![CDATA[Each second, add 1/3600 hour to accumulator. CPT computes: Status.RunHours + (1.0 / 3600.0).]]></Comment>
+<Text><![CDATA[XIC(RunHourTimer.DN)CPT(Status.RunHours,Status.RunHours + 0.0002778);]]></Text>
+</Rung>
+</RLLContent>
+</Routine>
+</Routines>
+</AddOnInstructionDefinition>
+</AddOnInstructionDefinitions>
+
+<!-- ============================================================
+     MODULES (Hardware Configuration)
+     Minimal virtual chassis - no real I/O needed for learning.
+     ============================================================ -->
+<Modules>
+<Module Name="Local" CatalogNumber="1756-L72" Vendor="1" ProductType="14" ProductCode="93" Major="37" Minor="11" ParentModule="Local" ParentModPortId="1" Inhibited="false" MajorFault="true">
+<EKey State="ExactMatch"/>
+<Ports>
+<Port Id="1" Address="0" Type="ICP" Upstream="false">
+<Bus Size="10"/>
+</Port>
+</Ports>
+</Module>
+</Modules>
+
+<!-- ============================================================
+     CONTROLLER-SCOPED TAGS
+     These tags are visible to ALL programs in the controller.
+     Demonstrates: BOOL, DINT, REAL, TIMER, COUNTER, arrays, UDTs.
+     ============================================================ -->
+<Tags Use="Context">
+<!-- === Digital I/O Simulation (bit type) === -->
+<Tag Name="StartPB" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Start pushbutton - simulated input]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="StopPB" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Stop pushbutton - simulated input]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="EmergencyStop" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[E-Stop - TRUE when pressed (normally closed contact = safety)]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="PartSensor" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Photo-eye: TRUE when part is present at inspection station]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="GateClosed" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Safety gate closed sensor]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="ResetPB" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Reset pushbutton]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="ManualMode" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Manual mode selector]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="AutoMode" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Auto mode selector]]></Description>
+<Data Format="L5K"><![CDATA[1]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="1"/></Data>
+</Tag>
+
+<!-- === Status Bits === -->
+<Tag Name="SystemReady" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[System is powered and E-Stop is clear]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="SystemPowered" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Main power on]]></Description>
+<Data Format="L5K"><![CDATA[1]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="1"/></Data>
+</Tag>
+<Tag Name="MachineActive" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[TRUE when in any mode]]></Description>
+</Tag>
+<Tag Name="CycleActive" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Inspection cycle in progress]]></Description>
+</Tag>
+<Tag Name="CycleComplete" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Inspection cycle finished]]></Description>
+</Tag>
+<Tag Name="ConveyorRun" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Conveyor motor run command]]></Description>
+</Tag>
+<Tag Name="PartDetectedONS" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[One-shot storage bit for PartSensor rising edge]]></Description>
+</Tag>
+<Tag Name="AlarmLatched" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Alarm latched flag]]></Description>
+</Tag>
+<Tag Name="SkipSection" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Debug flag to skip a section (JMP/LBL demo)]]></Description>
+</Tag>
+
+<!-- === Integer Values === -->
+<Tag Name="PartCount" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Total parts processed this shift]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="GoodParts" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Parts that passed inspection]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="RejectParts" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Parts that failed inspection]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="BatchSize" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Parts remaining in current batch]]></Description>
+<Data Format="L5K"><![CDATA[100]]></Data>
+<Data Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="100"/></Data>
+</Tag>
+<Tag Name="ShiftTarget" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Target parts per shift]]></Description>
+<Data Format="L5K"><![CDATA[500]]></Data>
+<Data Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="500"/></Data>
+</Tag>
+<Tag Name="PartWeightRaw" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Raw weight reading (grams * 100, as integer)]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="ForLoopIndex" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Index variable for FOR/NXT loop]]></Description>
+</Tag>
+<Tag Name="CalculatedResult" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Generic math result]]></Description>
+</Tag>
+
+<!-- === Real (Floating Point) Values === -->
+<Tag Name="PartWeight" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Part weight in grams (floating point)]]></Description>
+<Data Format="L5K"><![CDATA[0.0]]></Data>
+<Data Format="Decorated"><DataValue DataType="REAL" Radix="Float" Value="0.0"/></Data>
+</Tag>
+<Tag Name="TargetWeight" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Target weight specification]]></Description>
+<Data Format="L5K"><![CDATA[250.0]]></Data>
+<Data Format="Decorated"><DataValue DataType="REAL" Radix="Float" Value="250.0"/></Data>
+</Tag>
+<Tag Name="WeightTolerance" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Acceptable weight tolerance (+/- grams)]]></Description>
+<Data Format="L5K"><![CDATA[5.0]]></Data>
+<Data Format="Decorated"><DataValue DataType="REAL" Radix="Float" Value="5.0"/></Data>
+</Tag>
+<Tag Name="ProductionRate" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Calculated parts per hour]]></Description>
+<Data Format="L5K"><![CDATA[0.0]]></Data>
+<Data Format="Decorated"><DataValue DataType="REAL" Radix="Float" Value="0.0"/></Data>
+</Tag>
+<Tag Name="OEE_Availability" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Availability metric (0.0 to 1.0)]]></Description>
+</Tag>
+<Tag Name="OEE_Performance" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Performance metric]]></Description>
+</Tag>
+<Tag Name="OEE_Quality" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Quality metric]]></Description>
+</Tag>
+<Tag Name="DeviationValue" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Absolute weight deviation]]></Description>
+</Tag>
+
+<!-- === Timers === -->
+<Tag Name="InspectionDelay" TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[TON - delay before inspection starts (2000ms)]]></Description>
+</Tag>
+<Tag Name="InspectionWindow" TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[TON - inspection measurement window (500ms)]]></Description>
+</Tag>
+<Tag Name="ConveyorRunOff" TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[TOF - conveyor runs 3s after part clears]]></Description>
+</Tag>
+<Tag Name="ShiftRunTime" TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[RTO - retentive accumulated shift run time]]></Description>
+</Tag>
+<Tag Name="HealthCheckTimer" TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[TON - periodic health check (5000ms)]]></Description>
+</Tag>
+
+<!-- === Counters === -->
+<Tag Name="TotalPartCounter" TagType="Base" DataType="COUNTER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CTU - total parts processed]]></Description>
+</Tag>
+<Tag Name="BatchRemaining" TagType="Base" DataType="COUNTER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CTD - countdown from batch size]]></Description>
+</Tag>
+<Tag Name="GoodPartCounter" TagType="Base" DataType="COUNTER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CTU - good parts counter]]></Description>
+</Tag>
+
+<!-- === UDT Tags === -->
+<Tag Name="CurrentPart" TagType="Base" DataType="udtPartRecord" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Current part being inspected]]></Description>
+</Tag>
+<Tag Name="ConveyorMotor" TagType="Base" DataType="udtMotorStarter" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Motor starter status for conveyor]]></Description>
+</Tag>
+<Tag Name="FanMotor" TagType="Base" DataType="udtMotorStarter" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Motor starter status for cooling fan - demonstrates AOI reuse]]></Description>
+</Tag>
+
+<!-- === Arrays === -->
+<Tag Name="PartHistory" TagType="Base" DataType="udtPartRecord" Dimensions="50" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Array of the last 50 part inspection records. Demonstrates UDT arrays.]]></Description>
+</Tag>
+<Tag Name="HourlyCount" TagType="Base" DataType="DINT" Dimensions="24" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Parts per hour for last 24 hours. Demonstrates DINT arrays.]]></Description>
+</Tag>
+<Tag Name="ShiftReportData" TagType="Base" DataType="REAL" Dimensions="8" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Shift report data array (8 REAL values)]]></Description>
+</Tag>
+
+<!-- === Constants (immutable values) === -->
+<Tag Name="MAX_PARTS_PER_BATCH" TagType="Base" DataType="DINT" Radix="Decimal" Constant="true" ExternalAccess="Read Only">
+<Description><![CDATA[Constant: maximum batch size]]></Description>
+<Data Format="L5K"><![CDATA[1000]]></Data>
+<Data Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="1000"/></Data>
+</Tag>
+<Tag Name="SECONDS_PER_HOUR" TagType="Base" DataType="REAL" Radix="Float" Constant="true" ExternalAccess="Read Only">
+<Description><![CDATA[Constant: 3600.0 seconds per hour]]></Description>
+<Data Format="L5K"><![CDATA[3600.0]]></Data>
+<Data Format="Decorated"><DataValue DataType="REAL" Radix="Float" Value="3600.0"/></Data>
+</Tag>
+</Tags>
+
+<!-- ============================================================
+     PROGRAMS
+     Each program contains its own local tags and routines.
+     ============================================================ -->
+<Programs Use="Context">
+
+<!-- ===== PROGRAM 1: MainProgram ===== -->
+<Program Use="Target" Name="MainProgram" TestEdits="false" MainRoutineName="MainRoutine" Disabled="false" UseAsFolder="false">
+<Description><![CDATA[Main program - orchestrates all subroutines. MainRoutine is the entry point.]]></Description>
+
+<!-- Program-Scoped Tags (visible only within MainProgram) -->
+<Tags Use="Context">
+<Tag Name="ProgramOnlyFlag" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[This tag is ONLY visible inside MainProgram. Demonstrates program scope vs controller scope.]]></Description>
+</Tag>
+<Tag Name="LoopCounter" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Program-scoped counter]]></Description>
+</Tag>
+</Tags>
+
+<Routines Use="Context">
+
+<!-- ===== MainRoutine: Entry point, calls all subroutines ===== -->
+<Routine Use="Target" Name="MainRoutine" Type="RLL">
+<Description><![CDATA[MAIN ROUTINE - Entry point called every scan. Demonstrates JSR (Jump to Subroutine) to organize code into logical modules. Each JSR calls one concept-specific subroutine. JSR input parameters pass data INTO the subroutine; return parameters pass data BACK.]]></Description>
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[========== SECTION 1: BIT LOGIC ==========
+JSR to Bit_Logic routine. 0 input parameters, 0 return parameters.
+This routine handles all boolean/bit-level operations.]]></Comment>
+<Text><![CDATA[JSR(Bit_Logic,0,0);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[========== SECTION 2: TIMERS & COUNTERS ==========
+JSR to Timers_Counters routine. Demonstrates timer/counter instructions.]]></Comment>
+<Text><![CDATA[JSR(Timers_Counters,0,0);]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[========== SECTION 3: MATH & COMPARE ==========
+JSR to Math_Compare routine. Covers arithmetic, comparison, and compute.]]></Comment>
+<Text><![CDATA[JSR(Math_Compare,0,0);]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[========== SECTION 4: MOVE & DATA HANDLING ==========
+JSR to Move_Data routine. MOV, COP, CPS, CLR, and indirect addressing.]]></Comment>
+<Text><![CDATA[JSR(Move_Data,0,0);]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[========== SECTION 5: PROGRAM CONTROL ==========
+JSR to Program_Control routine. JMP/LBL, FOR/NXT, conditional execution.]]></Comment>
+<Text><![CDATA[JSR(Program_Control,0,0);]]></Text>
+</Rung>
+
+<Rung Number="5" Type="N">
+<Comment><![CDATA[========== SECTION 6: MOTOR CONTROL via AOI ==========
+Instantiates the aoiMotorStarter AOI for the conveyor motor.
+Parameters: Start, Stop, FaultReset, FeedbackRun, Overload, FeedbackTimeout, Running, Faulted, Status
+This is how you REUSE logic - the same AOI block works for any motor.]]></Comment>
+<Text><![CDATA[aoiMotorStarter(ConveyorMotor,StartPB,StopPB,ResetPB,ConveyorRun,EmergencyStop,2000,ConveyorRun,AlarmLatched,ConveyorMotor);]]></Text>
+</Rung>
+
+<Rung Number="6" Type="N">
+<Comment><![CDATA[========== SECTION 7: MOTOR CONTROL AOI REUSE ==========
+Same AOI, different motor (cooling fan). Demonstrates AOI reusability -
+one definition, infinite instances, each with independent data.]]></Comment>
+<Text><![CDATA[aoiMotorStarter(FanMotor,StartPB,StopPB,ResetPB,PartSensor,EmergencyStop,1500,ConveyorRun,AlarmLatched,FanMotor);]]></Text>
+</Rung>
+
+<Rung Number="7" Type="N">
+<Comment><![CDATA[========== SECTION 8: CALL STRUCTURED TEXT ROUTINE ==========
+JSR to a Structured Text routine. Shows that Ladder can call ST routines
+and vice versa. Different languages, same program.]]></Comment>
+<Text><![CDATA[JSR(Structured_Text_Demo,0,0);]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+
+<!-- ===== Routine: Bit_Logic ===== -->
+<Routine Use="Target" Name="Bit_Logic" Type="RLL">
+<Description><![CDATA[BIT LOGIC CONCEPTS: XIC (Examine If Closed / NO contact), XIO (Examine If Open / NC contact), OTE (Output Energize / coil), OTL (Output Latch), OTU (Output Unlatch), ONS (One Shot Rising), OSF (One Shot Falling), OSR (One Shot Rising with storage). Branches [ ] for OR logic. Series for AND logic.]]></Description>
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[CONCEPT: Seal-in Circuit (Start/Stop Pattern)
+XIC = normally-open contact (TRUE when tag=1). XIO = normally-closed contact (TRUE when tag=0).
+This rung: if StartPB=1, energize SystemReady. SystemReady contact in parallel "seals in"
+so it stays on even after StartPB releases. StopPB (XIO) breaks the seal.]]></Comment>
+<Text><![CDATA[XIC(StartPB)[XIC(SystemReady),XIC(StartPB)]XIO(StopPB)XIO(EmergencyStop)XIC(SystemPowered)OTE(SystemReady);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[CONCEPT: Latch/Unlatch (OTL/OTU)
+OTL = Output Latch: sets tag to 1 and holds it, even if rung goes false.
+OTU = Output Unlatch: sets tag to 0.
+Unlike OTE, OTL/OTU retain state across scans without a seal-in branch.
+Here: EmergencyStop latches AlarmLatched ON. It stays ON until ResetPB unlatches it.]]></Comment>
+<Text><![CDATA[XIC(EmergencyStop)OTL(AlarmLatched);]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[CONCEPT: Unlatch (OTU) - resets the latched alarm.]]></Comment>
+<Text><![CDATA[XIC(ResetPB)OTU(AlarmLatched);]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[CONCEPT: One-Shot Rising (ONS)
+ONS = Output is TRUE for exactly ONE scan when the preceding logic transitions FALSE->TRUE.
+Storage bit (PartDetectedONS) tracks previous state. Output (MachineActive) pulses for 1 scan.
+Used for: triggering actions on edges, avoiding repeated execution.]]></Comment>
+<Text><![CDATA[XIC(PartSensor)ONS(PartDetectedONS)OTE(ProgramOnlyFlag);]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[CONCEPT: Series Contacts = AND Logic
+All contacts in series must be TRUE for output to energize.
+GateClosed=1 AND (EmergencyStop=0) AND SystemReady=1 AND MachineActive=1 -> CycleActive=1]]></Comment>
+<Text><![CDATA[XIC(GateClosed)XIO(EmergencyStop)XIC(SystemReady)XIC(MachineActive)OTE(CycleActive);]]></Text>
+</Rung>
+
+<Rung Number="5" Type="N">
+<Comment><![CDATA[CONCEPT: Parallel Branches = OR Logic
+Brackets [ ] create parallel branches. At least one branch TRUE = rung TRUE.
+ManualMode=1 OR AutoMode=1 -> MachineActive=1]]></Comment>
+<Text><![CDATA[[XIC(ManualMode),XIC(AutoMode)]OTE(MachineActive);]]></Text>
+</Rung>
+
+<Rung Number="6" Type="N">
+<Comment><![CDATA[CONCEPT: Combined Series + Parallel = Complex Logic
+(SystemReady AND (ManualMode=1 OR AutoMode=1)) -> Process allowed.
+Outer XIC/XIO are in series with the parallel branch group.]]></Comment>
+<Text><![CDATA[XIC(SystemReady)[XIC(ManualMode),XIC(AutoMode)]OTE(ProgramOnlyFlag);]]></Text>
+</Rung>
+
+<Rung Number="7" Type="N">
+<Comment><![CDATA[CONCEPT: Multiple Outputs on Same Rung
+One rung condition can control multiple outputs. All energize simultaneously.]]></Comment>
+<Text><![CDATA[XIC(CycleComplete)OTE(ConveyorRun)OTL(AlarmLatched);]]></Text>
+</Rung>
+
+<Rung Number="8" Type="N">
+<Comment><![CDATA[CONCEPT: XIO as Safety Check
+XIO(EmergencyStop) = TRUE when E-Stop is NOT pressed (normal state).
+This is safety convention: use NC contacts for safety devices so a broken wire
+(which reads as 0/open) also triggers the safety condition.]]></Comment>
+<Text><![CDATA[XIO(EmergencyStop)XIC(SystemPowered)OTE(ConveyorRun);]]></Text>
+</Rung>
+
+<Rung Number="9" Type="N">
+<Comment><![CDATA[CONCEPT: Negation / Debounce Pattern
+XIO on a timer.DN bit creates a "NOT timed out" condition.
+This rung is TRUE when CycleActive=1 AND InspectionDelay has NOT finished (is still timing).
+Useful for: "while waiting" conditions, "not yet" guards.]]></Comment>
+<Text><![CDATA[XIC(CycleActive)XIO(InspectionDelay.DN)OTE(ProgramOnlyFlag);]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+
+<!-- ===== Routine: Timers_Counters ===== -->
+<Routine Use="Target" Name="Timers_Counters" Type="RLL">
+<Description><![CDATA[TIMER & COUNTER CONCEPTS: TON (Timer On Delay), TOF (Timer Off Delay), RTO (Retentive Timer On), CTU (Count Up), CTD (Count Down), RES (Reset). Timer bits: .EN (enabled), .TT (timing), .DN (done). .PRE (preset), .ACC (accumulator). Counter bits: .CU (count up enable), .CD (count down enable), .DN (done), .OV (overflow), .UN (underflow).]]></Description>
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[CONCEPT: TON - Timer On Delay
+When rung is TRUE, timer begins counting. .DN bit goes TRUE when .ACC >= .PRE.
+Preset = 2000ms. The timer resets to 0 when rung goes FALSE.
+Used for: "wait 2 seconds before starting inspection after part detected".]]></Comment>
+<Text><![CDATA[XIC(PartSensor)TON(InspectionDelay,2000,?);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[CONCEPT: TON - Inspection Window
+While InspectionDelay.DN=1 AND PartSensor=1, run a 500ms window timer.
+This creates a precise measurement window for weight reading.]]></Comment>
+<Text><![CDATA[XIC(InspectionDelay.DN)XIC(PartSensor)TON(InspectionWindow,500,?);]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[CONCEPT: TOF - Timer Off Delay
+TOF starts timing when rung goes FALSE (falling edge). Output is TRUE while timing.
+Use case: keep conveyor running for 3 seconds after part clears the sensor,
+so the next part can advance.]]></Comment>
+<Text><![CDATA[XIO(PartSensor)TOF(ConveyorRunOff,3000,?);]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[CONCEPT: RTO - Retentive Timer On
+RTO accumulates time across multiple TRUE periods. Does NOT reset when rung goes FALSE.
+Must use RES instruction to reset. Use case: total shift run time, across many cycles.]]></Comment>
+<Text><![CDATA[XIC(CycleActive)RTO(ShiftRunTime,28800000,?);]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[CONCEPT: CTU - Count Up Counter
+Each FALSE->TRUE transition of the rung increments .ACC by 1.
+.DN = TRUE when .ACC >= .PRE. Preset=999999 means "count essentially unlimited".
+Use case: total parts ever processed.]]></Comment>
+<Text><![CDATA[XIC(InspectionWindow.DN)CTU(TotalPartCounter,999999,?);]]></Text>
+</Rung>
+
+<Rung Number="5" Type="N">
+<Comment><![CDATA[CONCEPT: CTD - Count Down Counter
+Each FALSE->TRUE transition decrements .ACC by 1.
+Preset sets starting count. .DN = TRUE when .ACC <= 0.
+Use case: countdown from batch size, signal when batch is complete.]]></Comment>
+<Text><![CDATA[XIC(CycleComplete)CTD(BatchRemaining,100,?);]]></Text>
+</Rung>
+
+<Rung Number="6" Type="N">
+<Comment><![CDATA[CONCEPT: CTU with Conditional Count
+Only counts when InspectionWindow.DN=1 AND the calculated deviation is within tolerance.
+This counts GOOD parts only.]]></Comment>
+<Text><![CDATA[XIC(InspectionWindow.DN)XIC(ProgramOnlyFlag)CTU(GoodPartCounter,999999,?);]]></Text>
+</Rung>
+
+<Rung Number="7" Type="N">
+<Comment><![CDATA[CONCEPT: RES - Reset Timer/Counter
+RES clears .ACC to 0 and resets all status bits (.DN, .TT, .EN).
+Used here: reset shift timer and counters at start of new shift.]]></Comment>
+<Text><![CDATA[XIC(ResetPB)[RES(ShiftRunTime),RES(TotalPartCounter),RES(GoodPartCounter)];]]></Text>
+</Rung>
+
+<Rung Number="8" Type="N">
+<Comment><![CDATA[CONCEPT: Timer Status Bits in Logic
+Using .DN (Done), .TT (Timing), .EN (Enabled) as conditions.
+.MOD = timer is timing (TT). Used to light a "timing" indicator.]]></Comment>
+<Text><![CDATA[XIC(InspectionDelay.TT)OTE(ProgramOnlyFlag);]]></Text>
+</Rung>
+
+<Rung Number="9" Type="N">
+<Comment><![CDATA[CONCEPT: Counter Status Bits
+TotalPartCounter.DN goes TRUE when ACC >= 999999 (overflow warning).
+Use .OV (overflow) for safety - stop if counter rolls over.]]></Comment>
+<Text><![CDATA[XIC(TotalPartCounter.OV)OTL(AlarmLatched);]]></Text>
+</Rung>
+
+<Rung Number="10" Type="N">
+<Comment><![CDATA[CONCEPT: Combined Timer + Counter
+When cycle finishes, start a 1-second pulse timer. Each pulse increments a counter.
+This effectively counts "how many seconds the cycle was complete" - a basic
+runtime accumulator pattern.]]></Comment>
+<Text><![CDATA[XIC(CycleComplete)TON(HealthCheckTimer,1000,?)XIC(HealthCheckTimer.DN)CTU(TotalPartCounter,999999,?);]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+
+<!-- ===== Routine: Math_Compare ===== -->
+<Routine Use="Target" Name="Math_Compare" Type="RLL">
+<Description><![CDATA[MATH & COMPARISON CONCEPTS: ADD, SUB, MUL, DIV, CPT (Compute), MOD (Modulo), SQR (Square Root), ABS (Absolute Value), MOV for constants, EQU, NEQ, GRT, LES, GEQ, LEQ, LIM (Limit Test), CMP (Comparison).]]></Description>
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[CONCEPT: ADD - Addition
+ADD(SourceA, SourceB, Destination). Destination = SourceA + SourceB.
+Here: convert raw integer weight (grams*100) to REAL by dividing by 100.0.]]></Comment>
+<Text><![CDATA[XIC(InspectionWindow.DN)ADD(PartWeightRaw,0,CalculatedResult);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[CONCEPT: DIV - Division
+DIV(SourceA, SourceB, Destination). Destination = SourceA / SourceB.
+Here: PartWeight = PartWeightRaw / 100.0 (convert centigrams to grams).]]></Comment>
+<Text><![CDATA[XIC(InspectionWindow.DN)DIV(PartWeightRaw,100.0,PartWeight);]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[CONCEPT: SUB - Subtraction
+Destination = GoodParts - RejectParts. This gives net good parts.
+Negative result means more rejects than good parts.]]></Comment>
+<Text><![CDATA[XIC(CycleComplete)SUB(GoodParts,RejectParts,CalculatedResult);]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[CONCEPT: MUL - Multiplication
+ProductionRate = PartCount * SECONDS_PER_HOUR / ShiftRunTime.ACC.
+Gives parts-per-hour rate. This is a basic OEE performance metric.]]></Comment>
+<Text><![CDATA[XIC(HealthCheckTimer.DN)MUL(PartCount,SECONDS_PER_HOUR,ProductionRate);]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[CONCEPT: DIV with REAL result
+ProductionRate = ProductionRate / ShiftRunTime.ACC.
+Completing the parts-per-hour calculation. Note: Division by zero
+causes a minor fault if ShiftRunTime.ACC = 0. Guard with GRT check first.]]></Comment>
+<Text><![CDATA[XIC(HealthCheckTimer.DN)GRT(ShiftRunTime.ACC,0)DIV(ProductionRate,ShiftRunTime.ACC,ProductionRate);]]></Text>
+</Rung>
+
+<Rung Number="5" Type="N">
+<Comment><![CDATA[CONCEPT: CPT - Compute (Expression-Based Math)
+CPT lets you write complex math as a single text expression.
+Here: OEE_Availability = (RunTime / PlannedTime) but simplified as example.
+Expression: (PartCount * TargetWeight) / (ShiftTarget * TargetWeight)
+This evaluates the entire formula in one instruction instead of chaining ADD/MUL/DIV.]]></Comment>
+<Text><![CDATA[XIC(HealthCheckTimer.DN)CPT(OEE_Availability,(PartCount * TargetWeight) / (ShiftTarget * TargetWeight));]]></Text>
+</Rung>
+
+<Rung Number="6" Type="N">
+<Comment><![CDATA[CONCEPT: MOD - Modulo (Remainder)
+MOD(SourceA, SourceB, Destination). Destination = remainder of A / B.
+Here: check if PartCount is even (MOD 2 = 0) or odd (MOD 2 = 1).
+Useful for: alternating actions, round-robin scheduling, parity checks.]]></Comment>
+<Text><![CDATA[XIC(CycleComplete)MOD(PartCount,2,CalculatedResult);]]></Text>
+</Rung>
+
+<Rung Number="7" Type="N">
+<Comment><![CDATA[CONCEPT: SQR - Square Root
+SQR(Source, Destination). Destination = sqrt(Source).
+Example use: statistical standard deviation calculation step.]]></Comment>
+<Text><![CDATA[XIC(HealthCheckTimer.DN)SQR(PartWeight,DeviationValue);]]></Text>
+</Rung>
+
+<Rung Number="8" Type="N">
+<Comment><![CDATA[CONCEPT: ABS - Absolute Value
+ABS(Source, Destination). Destination = |Source|.
+Here: calculate absolute deviation from target weight.
+ABS(PartWeight - TargetWeight) = how far off the weight is, regardless of over/under.]]></Comment>
+<Text><![CDATA[XIC(InspectionWindow.DN)SUB(PartWeight,TargetWeight,DeviationValue)ABS(DeviationValue,DeviationValue);]]></Text>
+</Rung>
+
+<Rung Number="9" Type="N">
+<Comment><![CDATA[CONCEPT: EQU - Equal Comparison
+EQU(SourceA, SourceB). TRUE when A == B.
+Here: check if CalculatedResult equals exactly 0 (even part count).]]></Comment>
+<Text><![CDATA[EQU(CalculatedResult,0)OTE(ProgramOnlyFlag);]]></Text>
+</Rung>
+
+<Rung Number="10" Type="N">
+<Comment><![CDATA[CONCEPT: NEQ - Not Equal Comparison
+NEQ(SourceA, SourceB). TRUE when A != B.
+Here: flag when part weight differs from target (always true in practice).]]></Comment>
+<Text><![CDATA[NEQ(PartWeight,TargetWeight)OTE(ProgramOnlyFlag);]]></Text>
+</Rung>
+
+<Rung Number="11" Type="N">
+<Comment><![CDATA[CONCEPT: GRT + LES - Range Check
+GRT(SourceA, SourceB) = A > B. LES(SourceA, SourceB) = A < B.
+Combined: GRT checks above max tolerance, LES checks below min.
+This creates a "window comparator" - is weight within +/- tolerance?]]></Comment>
+<Text><![CDATA[XIC(InspectionWindow.DN)GRT(DeviationValue,WeightTolerance)OTE(ProgramOnlyFlag);]]></Text>
+</Rung>
+
+<Rung Number="12" Type="N">
+<Comment><![CDATA[CONCEPT: GEQ + LEQ - Inclusive Comparisons
+GEQ = greater-than-or-equal. LEQ = less-than-or-equal.
+Here: check if weight is within acceptable range [Target-5.0, Target+5.0].
+Two separate comparisons yield two separate bits for detailed reporting.]]></Comment>
+<Text><![CDATA[XIC(InspectionWindow.DN)GEQ(PartWeight,TargetWeight)OTE(ProgramOnlyFlag);]]></Text>
+</Rung>
+
+<Rung Number="13" Type="N">
+<Comment><![CDATA[CONCEPT: LIM - Limit Test
+LIM(LowLimit, Test, HighLimit). TRUE if LowLimit <= Test <= HighLimit.
+This is the single-instruction equivalent of the GEQ+LEQ pair above.
+Much cleaner! Checks if PartWeight is between TargetWeight-5.0 and TargetWeight+5.0.
+Note: LowLimit must be <= HighLimit, or LIM behaves as "outside" test.
+Here we use CPT to compute the limits inline (not standard in all versions, shown for concept).]]></Comment>
+<Text><![CDATA[LIM(245.0,PartWeight,255.0)OTE(ProgramOnlyFlag);]]></Text>
+</Rung>
+
+<Rung Number="14" Type="N">
+<Comment><![CDATA[CONCEPT: CMP - Comparison (Expression)
+CMP lets you write any comparison expression. More flexible than individual instructions.
+Expression: PartWeight > (TargetWeight + WeightTolerance)
+This flags OVERWEIGHT parts. Combine with a LES expression for UNDERWEIGHT.]]></Comment>
+<Text><![CDATA[CMP(PartWeight > (TargetWeight + WeightTolerance))OTE(ProgramOnlyFlag);]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+
+<!-- ===== Routine: Move_Data ===== -->
+<Routine Use="Target" Name="Move_Data" Type="RLL">
+<Description><![CDATA[MOVE & DATA HANDLING CONCEPTS: MOV (Move value), COP (Copy block), CPS (Synchronous Copy), CLR (Clear), indirect addressing with [index], UDT member access with dot notation.]]></Description>
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[CONCEPT: MOV - Move Value
+MOV(Source, Destination). Copies Source value into Destination.
+Here: transfer PartCount to PartHistory[0].PartID on cycle complete.
+Simple 1:1 value copy. Works with all atomic data types.]]></Comment>
+<Text><![CDATA[XIC(CycleComplete)MOV(PartCount,PartHistory[0].PartID);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[CONCEPT: MOV with Constant
+Store the current part weight into the UDT member CurrentPart.Weight.]]></Comment>
+<Text><![CDATA[XIC(InspectionWindow.DN)MOV(PartWeight,CurrentPart.Weight);]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[CONCEPT: COP - Copy Block (Length Specified)
+COP(Source, Destination, Length). Copies Length elements from Source to Destination.
+Here: copy all 8 values from ShiftReportData array to HourlyCount array.
+Length is in DESTINATION elements. Both arrays must be same type.
+WARNING: COP does NOT check data types. Copying DINT to REAL will produce garbage.
+Use CPS (synchronous copy) for multi-element copies that must be consistent.]]></Comment>
+<Text><![CDATA[XIC(ResetPB)COP(ShiftReportData[0],HourlyCount[0],8);]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[CONCEPT: CPS - Synchronous Copy
+CPS(Source, Destination, Length). Like COP but interrupts are disabled during copy.
+Use CPS when copying multi-element data that could be modified by another task
+or I/O update mid-copy. CPS guarantees atomic copy.
+Here: copy inspection result into history array safely.]]></Comment>
+<Text><![CDATA[XIC(InspectionWindow.DN)CPS(CurrentPart,PartHistory[0],1);]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[CONCEPT: CLR - Clear Value
+CLR(Destination). Sets Destination to 0 (for numeric types).
+Here: clear current part record at start of new cycle.
+Cleaner than MOV(0, CurrentPart.Weight).]]></Comment>
+<Text><![CDATA[XIC(CycleActive)CLR(CurrentPart.Weight);]]></Text>
+</Rung>
+
+<Rung Number="5" Type="N">
+<Comment><![CDATA[CONCEPT: MOV with Indirect/Indexed Addressing
+MOV(Source, Array[Index]). The [ForLoopIndex] is an indirect address.
+As ForLoopIndex changes, different array elements are accessed.
+This is how you iterate through arrays in ladder logic.]]></Comment>
+<Text><![CDATA[XIC(HealthCheckTimer.DN)MOV(ProductionRate,ShiftReportData[ForLoopIndex]);]]></Text>
+</Rung>
+
+<Rung Number="6" Type="N">
+<Comment><![CDATA[CONCEPT: Copy UDT to UDT
+COP between two UDT instances copies all members. Source and destination
+must be the same UDT type. This is a "snapshot" of a part record.]]></Comment>
+<Text><![CDATA[XIC(CycleComplete)COP(CurrentPart,PartHistory[0],1);]]></Text>
+</Rung>
+
+<Rung Number="7" Type="N">
+<Comment><![CDATA[CONCEPT: Fill Array with Constant
+Use FLL (Fill) or COP from a constant tag to initialize an array.
+Here: on reset, fill HourlyCount array with zeros using COP from a cleared DINT.
+(Studio 5000 also has FLL instruction specifically for filling.)]]></Comment>
+<Text><![CDATA[XIC(ResetPB)CLR(HourlyCount[0]);]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+
+<!-- ===== Routine: Program_Control ===== -->
+<Routine Use="Target" Name="Program_Control" Type="RLL">
+<Description><![CDATA[PROGRAM CONTROL CONCEPTS: JMP (Jump to Label), LBL (Label), FOR/NXT (For-Next loop), JSR (Jump to Subroutine), RET (Return). These instructions alter the normal top-to-bottom scan order.]]></Description>
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[CONCEPT: JMP/LBL - Unconditional Jump
+JMP(LabelName) skips all rungs until LBL(LabelName).
+This skips the FOR/NXT loop section entirely.
+Useful for: debug sections that can be toggled on/off.]]></Comment>
+<Text><![CDATA[JMP(SkipLoop);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[CONCEPT: LBL - Label Target
+This is the jump target for the JMP above. Everything between JMP and LBL is skipped.
+Labels are string identifiers (up to 40 chars).]]></Comment>
+<Text><![CDATA[LBL(SkipLoop);]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[CONCEPT: Conditional JMP
+When SkipSection=TRUE, jump over the next rungs to label DebugSkip.
+This lets you conditionally enable/disable sections of code at runtime.
+Useful for: maintenance mode, feature toggles, testing.]]></Comment>
+<Text><![CDATA[XIC(SkipSection)JMP(DebugSkip);]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[These rungs are skipped when SkipSection=TRUE. They would normally execute here.
+In a real project, this is where optional debug/complex logic lives.]]></Comment>
+<Text><![CDATA[NOP;]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[CONCEPT: LBL for Conditional Jump Target]]></Comment>
+<Text><![CDATA[LBL(DebugSkip);]]></Text>
+</Rung>
+
+<Rung Number="5" Type="N">
+<Comment><![CDATA[CONCEPT: FOR/NXT - For-Next Loop
+FOR(IndexTag, InitialValue, FinalValue, StepSize). Repeats rungs until NXT.
+The rungs between FOR and NXT execute repeatedly with IndexTag incrementing
+from 0 to 23 by step 1. After NXT, execution continues to the next rung.
+
+WARNING: FOR/NXT loops consume scan time. Large loops can cause scan overrun.
+Always use a reasonable limit. The FOR instruction disables itself if index
+exceeds final value.
+
+Here: iterate through HourlyCount[0..23] and zero each element.]]></Comment>
+<Text><![CDATA[FOR(ForLoopIndex,0,23,1)CLR(HourlyCount[ForLoopIndex])NXT;]]></Text>
+</Rung>
+
+<Rung Number="6" Type="N">
+<Comment><![CDATA[CONCEPT: FOR/NXT with Conditional Execution Inside Loop
+Inside the FOR loop, check each HourlyCount element. If non-zero,
+copy to ShiftReportData (accumulate report data).
+The XIC(HourlyCount[ForLoopIndex]) only applies to the MOV, not the FOR/NXT.
+The loop always iterates 24 times regardless of internal conditions.]]></Comment>
+<Text><![CDATA[FOR(ForLoopIndex,0,23,1)GRT(HourlyCount[ForLoopIndex],0)ADD(HourlyCount[ForLoopIndex],ShiftReportData[ForLoopIndex],ShiftReportData[ForLoopIndex])NXT;]]></Text>
+</Rung>
+
+<Rung Number="7" Type="N">
+<Comment><![CDATA[CONCEPT: RET - Return (Early Exit)
+RET immediately exits this routine and returns to the calling JSR.
+Here: if EmergencyStop is active, exit early - don't execute remaining logic.
+Useful for: guard clauses that prevent execution in unsafe states.
+Only works inside subroutines called via JSR, not in MainRoutine.]]></Comment>
+<Text><![CDATA[XIC(EmergencyStop)RET();]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+
+<!-- ===== Routine: Structured_Text_Demo ===== -->
+<Routine Use="Target" Name="Structured_Text_Demo" Type="ST">
+<Description><![CDATA[STRUCTURED TEXT CONCEPTS: The same logic concepts expressed in Structured Text (IEC 61131-3 ST language). Demonstrates IF/THEN/ELSE, CASE, FOR loops, assignments :=, function calls, and comments. ST is often preferred for complex math, string handling, and state machines.]]></Description>
+<STContent>
+<![CDATA[(* ============================================================
+   STRUCTURED TEXT DEMONSTRATION
+   Same concepts as the ladder routines, expressed in ST syntax.
+   Language: IEC 61131-3 Structured Text
+   Key syntax:
+     :=      Assignment (like MOV)
+     ;       Statement terminator
+     IF...THEN...ELSIF...ELSE...END_IF   Conditional
+     CASE...OF...END_CASE                Multi-way branch
+     FOR...TO...BY...DO...END_FOR        Loop
+     //      Single-line comment
+     (* *)   Multi-line comment
+   ============================================================ *)
+
+// ----- BIT LOGIC in ST -----
+// Seal-in circuit using IF/THEN
+IF StartPB THEN
+    SystemReady := 1;
+END_IF;
+
+IF StopPB OR EmergencyStop THEN
+    SystemReady := 0;
+END_IF;
+
+// Latch/Unlatch emulation (ST has no native latch)
+// OTL equivalent: set and hold
+IF EmergencyStop THEN
+    AlarmLatched := 1;
+END_IF;
+
+// OTU equivalent: clear
+IF ResetPB THEN
+    AlarmLatched := 0;
+END_IF;
+
+// One-shot detection (rising edge)
+// Uses a static variable pattern: compare current vs previous
+IF PartSensor AND NOT PartDetectedONS THEN
+    PartDetectedONS := 1;   // One-shot pulse
+ELSE
+    PartDetectedONS := 0;
+END_IF;
+
+// AND / OR logic in ST
+CycleActive := GateClosed AND NOT EmergencyStop AND SystemReady AND MachineActive;
+MachineActive := ManualMode OR AutoMode;
+
+// ----- TIMERS in ST -----
+// TON - Timer On Delay
+TONR(InspectionDelay);  // Note: timer calls vary by platform
+// In Studio 5000 ST, timers are called as function blocks:
+// TON(InspectionDelay, 2000);
+
+// TOF - Timer Off Delay
+// TOF(ConveyorRunOff, 3000);
+
+// RTO - Retentive Timer
+// RTO(ShiftRunTime, 28800000);
+
+// ----- COUNTERS in ST -----
+// CTU - Count Up
+IF InspectionWindow.DN THEN
+    CTU(TotalPartCounter, 999999);
+END_IF;
+
+// ----- MATH in ST -----
+// ST excels at math - much cleaner than ladder for formulas
+PartWeight := DINT_TO_REAL(PartWeightRaw) / 100.0;
+DeviationValue := ABS(PartWeight - TargetWeight);
+
+// OEE Calculation (complex formula in one expression)
+OEE_Availability := (DINT_TO_REAL(PartCount) * TargetWeight) 
+                  / (DINT_TO_REAL(ShiftTarget) * TargetWeight);
+
+OEE_Performance := (DINT_TO_REAL(PartCount) * TargetWeight)
+                 / (DINT_TO_REAL(ShiftTarget) * TargetWeight);
+
+IF GoodParts > 0 THEN
+    OEE_Quality := DINT_TO_REAL(GoodParts) 
+                 / DINT_TO_REAL(GoodParts + RejectParts);
+ELSE
+    OEE_Quality := 0.0;
+END_IF;
+
+ProductionRate := (DINT_TO_REAL(PartCount) * 3600.0) 
+                / DINT_TO_REAL(ShiftRunTime.ACC);
+
+// Modulo (remainder) - check even/odd
+IF (PartCount MOD 2) = 0 THEN
+    // PartCount is even
+    ProgramOnlyFlag := 1;
+ELSE
+    ProgramOnlyFlag := 0;
+END_IF;
+
+// ----- COMPARISONS in ST -----
+// Same operators as ladder but inline
+IF PartWeight = TargetWeight THEN
+    // Exact match (rare in real world with floating point)
+END_IF;
+
+IF DeviationValue > WeightTolerance THEN
+    // Part is out of tolerance - flag as reject
+    CurrentPart.InspectionResult := 2;  // Fail
+END_IF;
+
+// LIM equivalent: range check
+IF (PartWeight >= 245.0) AND (PartWeight <= 255.0) THEN
+    CurrentPart.InspectionResult := 1;  // Pass
+ELSE
+    CurrentPart.InspectionResult := 3;  // Fail
+END_IF;
+
+// CMP equivalent: direct boolean expression
+ProgramOnlyFlag := (PartWeight > (TargetWeight + WeightTolerance));
+
+// ----- DATA HANDLING in ST -----
+// MOV equivalent
+PartHistory[0].PartID := PartCount;
+
+// COP equivalent (array copy)
+FOR i := 0 TO 7 DO
+    HourlyCount[i] := PartHistory[i].PartID;  // Indirect array access
+END_FOR;
+
+// CLR equivalent
+CurrentPart.Weight := 0.0;
+CurrentPart.InspectionResult := 0;
+
+// ----- PROGRAM CONTROL in ST -----
+// IF/THEN/ELSE (conditional execution)
+IF SkipSection THEN
+    // Skip this entire block
+ELSE
+    // Execute normal logic
+    FOR i := 0 TO 23 DO
+        HourlyCount[i] := 0;  // Clear array
+    END_FOR;
+END_IF;
+
+// CASE statement (multi-way branch) - cleaner than nested IFs
+CASE CurrentPart.InspectionResult OF
+    0:  // Pending
+        ProgramOnlyFlag := 0;
+    1:  // Pass
+        GoodParts := GoodParts + 1;
+    2, 3:  // Fail (Under or Over)
+        RejectParts := RejectParts + 1;
+    4:  // Fail Other
+        RejectParts := RejectParts + 1;
+END_CASE;
+
+// FOR loop (same as FOR/NXT in ladder)
+FOR ForLoopIndex := 0 TO 23 BY 1 DO
+    HourlyCount[ForLoopIndex] := 0;
+END_FOR;
+
+// RET equivalent: EXIT or RETURN
+IF EmergencyStop THEN
+    RETURN;  // Exit routine immediately
+END_IF;
+
+// ----- FOR/NEXT loop with complex body -----
+FOR ForLoopIndex := 0 TO 23 BY 1 DO
+    IF HourlyCount[ForLoopIndex] > 0 THEN
+        ShiftReportData[ForLoopIndex] := ShiftReportData[ForLoopIndex] 
+                                       + DINT_TO_REAL(HourlyCount[ForLoopIndex]);
+    END_IF;
+END_FOR;
+
+]]>
+</STContent>
+</Routine>
+
+</Routines>
+</Program>
+
+<!-- ===== PROGRAM 2: Periodic_Calc (periodic task) ===== -->
+<Program Use="Target" Name="Periodic_Calc" TestEdits="false" MainRoutineName="Periodic_Routine" Disabled="false" UseAsFolder="false">
+<Description><![CDATA[Periodic calculation program - runs every 100ms regardless of continuous scan. Demonstrates periodic tasks, which are essential for PID loops, communications, and time-critical calculations.]]></Description>
+<Tags Use="Context">
+<Tag Name="ScanCounter" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Increments each periodic scan (every 100ms). Counts how many times this task has run.]]></Description>
+</Tag>
+<Tag Name="OEE_UpdateFlag" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Flag set every 10 seconds (100 scans * 100ms) to trigger OEE update]]></Description>
+</Tag>
+</Tags>
+<Routines Use="Context">
+<Routine Use="Target" Name="Periodic_Routine" Type="RLL">
+<Description><![CDATA[Runs every 100ms. Calculates real-time production metrics.]]></Description>
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[Increment scan counter each execution (every 100ms)]]></Comment>
+<Text><![CDATA[ADD(ScanCounter,1,ScanCounter);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[Every 100 scans (10 seconds), calculate production rate.
+100 scans * 100ms = 10,000ms = 10 seconds. MOD 100 = 0 detects this interval.
+This is how you create timed execution inside a periodic task.]]></Comment>
+<Text><![CDATA[EQU(ScanCounter,100)[MOV(0,ScanCounter),MUL(PartCount,SECONDS_PER_HOUR,ProductionRate)];]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[Calculate OEE Quality metric: GoodParts / (GoodParts + RejectParts).
+CPT with conditional guard: (GoodParts + RejectParts) must be > 0 to avoid division by zero.
+If denominator is 0, OEE_Quality stays at its previous value.]]></Comment>
+<Text><![CDATA[GRT(GoodParts,0)CPT(OEE_Quality,GoodParts / (GoodParts + RejectParts));]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[Calculate OEE Performance metric using compute expression.
+PartCount / (ShiftTarget * (ShiftRunTime.ACC / 3600000.0))
+This compares actual rate to ideal rate based on elapsed time.]]></Comment>
+<Text><![CDATA[CPT(OEE_Performance,PartCount / (ShiftTarget * (ShiftRunTime.ACC / 3600000.0)));]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[MOV production metrics into shift report array for trending.
+Index wraps at 8 elements (0-7), looping every 80 seconds.]]></Comment>
+<Text><![CDATA[MOV(ProductionRate,ShiftReportData[ScanCounter]);]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+</Routines>
+</Program>
+
+</Programs>
+
+<!-- ============================================================
+     TASKS
+     Define how programs execute.
+     ============================================================ -->
+<Tasks Use="Context">
+
+<!-- Continuous Task: runs MainProgram in an infinite loop -->
+<Task Use="Target" Name="MainTask" Type="CONTINUOUS" Priority="10" Watchdog="500" DisableUpdateOutputs="false" InhibitTask="false">
+<Description><![CDATA[Continuous task - runs MainProgram repeatedly as fast as the processor allows. This is the default task type. Every scan: read inputs -> execute logic -> write outputs -> housekeeping. Watchdog = 500ms (if scan exceeds this, major fault).]]></Description>
+<ScheduledPrograms>
+<ScheduledProgram Name="MainProgram"/>
+</ScheduledPrograms>
+</Task>
+
+<!-- Periodic Task: runs Periodic_Calc every 100ms -->
+<Task Use="Target" Name="PeriodicTask" Type="PERIODIC" Rate="100" Priority="5" Watchdog="100" DisableUpdateOutputs="false" InhibitTask="false">
+<Description><![CDATA[Periodic task - executes Periodic_Calc every 100ms. Higher priority (5 < 10) so it interrupts MainTask. Use periodic tasks for: PID loops, motion control, communications, regular calculations. Rate=100ms, Watchdog=100ms (must complete within one period).]]></Description>
+<ScheduledPrograms>
+<ScheduledProgram Name="Periodic_Calc"/>
+</ScheduledPrograms>
+</Task>
+
+</Tasks>
+
+<!-- ============================================================
+     TRENDS
+     Configure data logging for visualization.
+     ============================================================ -->
+<Trends Use="Context">
+<Trend Use="Target" Name="ProductionTrend" SampleMode="Periodic" SamplePeriod="1000" SamplePointsMaximum="3600" Enable="true" SampleOnChange="false" SampleOutputMask="0000_0000">
+<Description><![CDATA[Trends plot tag values over time. This one samples ProductionRate every 1000ms, storing up to 3600 points (1 hour). Open in Studio 5000: Controller Organizer > Trends > ProductionTrend.]]></Description>
+<Tag Name="ProductionRate"/>
+<Tag Name="PartCount"/>
+<Tag Name="GoodParts"/>
+</Trend>
+
+<Trend Use="Target" Name="OEE_Trend" SampleMode="Periodic" SamplePeriod="5000" SamplePointsMaximum="720" Enable="true" SampleOnChange="false" SampleOutputMask="0000_0000">
+<Description><![CDATA[OEE metrics trend - sampled every 5 seconds, 720 points = 1 hour of data.]]></Description>
+<Tag Name="OEE_Availability"/>
+<Tag Name="OEE_Performance"/>
+<Tag Name="OEE_Quality"/>
+</Trend>
+</Trends>
+
+<CST MasterID="0"/>
+<WallClockTime LocalTimeAdjustment="0" TimeZone="0"/>
+<DataLogs/>
+<TimeSynchronize Priority1="128" Priority2="128" PTPEnable="false"/>
+</Controller>
+</RSLogix5000Content>
