@@ -1,0 +1,2184 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="32.05" TargetName="Beginner_Guide_Annotated" TargetType="Controller" ContainsContext="false" Owner="Training" ExportDate="Wed Jun 24 08:16:52 2026" ExportOptions="NoRawData L5KData DecoratedData ForceProtectedEncoding AllProjDocTrans">
+<Controller Use="Target" Name="pete" ProcessorType="1756-L72" MajorRev="37" MinorRev="11" TimeSlice="20" ShareUnusedTimeSlice="1" ProjectCreationDate="Wed Jun 24 08:15:44 2026" LastModifiedDate="Wed Jun 24 08:15:46 2026" SFCExecutionControl="CurrentActive" SFCRestartPosition="MostRecent"
+ SFCLastScan="DontScan" ProjectSN="16#0000_0000" MatchProjectToController="false" CanUseRPIFromProducer="false" InhibitAutomaticFirmwareUpdate="0" PassThroughConfiguration="EnabledWithAppend" DownloadProjectDocumentationAndExtendedProperties="true" DownloadProjectCustomProperties="true" ReportMinorOverflow="false" DataExchangeId="{E7FFCE95-9E51-4808-A25D-E5DCC8EE2F8C}">
+<RedundancyInfo Enabled="false" KeepTestEditsOnSwitchOver="false" IOMemoryPadPercentage="90" DataTablePadPercentage="50"/>
+<Security Code="0" ChangesToDetect="16#ffff_ffff_ffff_ffff"/>
+<SafetyInfo/>
+<DataTypes >
+
+<DataType Name="udtPartInspectionRecord" Family="NoFamily" Class="User">
+<Description><![CDATA[
+PART INSPECTION RECORD — Container for all data about a single inspected part.
+Members: unique ID, measured weight, target spec, tolerance, inspection result code,
+inspection duration, and timestamp array. Use dot notation: Part_Current.RecordID.
+]]></Description>
+<Members>
+<Member Name="RecordID" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Unique part identifier (1 to 999,999). Incremented each cycle.]]></Description>
+</Member>
+<Member Name="MeasuredWeight_Grams" DataType="REAL" Dimension="0" Radix="Float" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Actual measured weight in grams (floating-point).]]></Description>
+</Member>
+<Member Name="TargetWeight_Grams" DataType="REAL" Dimension="0" Radix="Float" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Specification target weight for this part type.]]></Description>
+</Member>
+<Member Name="Tolerance_PlusMinusGrams" DataType="REAL" Dimension="0" Radix="Float" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Acceptable deviation band (+/- grams). Part passes if MeasuredWeight is within TargetWeight +/- this value.]]></Description>
+</Member>
+<Member Name="InspectionResultCode" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Result code: 0=Pending/NotInspected, 1=PASS (within tolerance), 2=FAIL_UnderWeight, 3=FAIL_OverWeight, 4=FAIL_SensorError.]]></Description>
+</Member>
+<Member Name="InspectionDuration_Milliseconds" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[How long the inspection took from sensor trigger to result (milliseconds).]]></Description>
+</Member>
+<Member Name="Timestamp_Array" DataType="DINT" Dimension="7" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Timestamp when inspection completed: [Year, Month, Day, Hour, Minute, Second, Millisecond]. 7-element DINT array allows indexing by time component.]]></Description>
+</Member>
+</Members>
+</DataType>
+
+<DataType Name="udtMotorStarterStatus" Family="NoFamily" Class="User">
+<Description><![CDATA[
+MOTOR STARTER STATUS — Accumulated data for one motor starter instance.
+Members track: run command, running feedback, fault state, overload status,
+accumulated run hours, start count, and fault diagnosis code.
+Used as the InOut backing tag for aoiMotorStarter (one instance per motor).
+]]></Description>
+<Members>
+<Member Name="RunCommand" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Seal-in coil: TRUE when start has been pressed and stop/fault have not. This is the "memory" of the start/stop circuit.]]></Description>
+</Member>
+<Member Name="RunningFeedback" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Feedback from contactor auxiliary contact: TRUE = motor is physically running.]]></Description>
+</Member>
+<Member Name="Faulted" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Latched fault flag: TRUE = motor cannot start until reset.]]></Description>
+</Member>
+<Member Name="OverloadTripped" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Overload relay status: TRUE = motor current exceeded safe limit.]]></Description>
+</Member>
+<Member Name="AccumulatedRunHours" DataType="REAL" Dimension="0" Radix="Float" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Total motor run time in hours (fractional). Used for preventive maintenance scheduling.]]></Description>
+</Member>
+<Member Name="TotalStartCount" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Lifetime motor starts. High counts may indicate contactor wear.]]></Description>
+</Member>
+<Member Name="FaultDiagnosticCode" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description><![CDATA[Diagnostic: 0=NoFault, 1=OverloadTrip, 2=FeedbackTimeout (contactor didn't close), 3=FeedbackLoss (contactor opened unexpectedly).]]></Description>
+</Member>
+</Members>
+</DataType>
+</DataTypes>
+<Modules>
+<Module Name="Local" CatalogNumber="1756-L72" Vendor="1" ProductType="14" ProductCode="93" Major="37" Minor="11" ParentModule="Local" ParentModPortId="1" Inhibited="false" MajorFault="true"
+>
+<EKey State="ExactMatch"/>
+<Ports>
+<Port Id="1" Address="0" Type="ICP" Upstream="false">
+<Bus Size="10"/>
+</Port>
+</Ports>
+</Module>
+</Modules>
+<AddOnInstructionDefinitions >
+<AddOnInstructionDefinition Name="aoiMotorStarter" Class="Standard" Revision="1.0" Vendor="Training" ExecutePrescan="false" ExecutePostscan="false" ExecuteEnableInFalse="false" CreatedDate="2026-06-24T09:00:00.000Z" CreatedBy="Training" EditedDate="2026-06-24T09:00:00.000Z" EditedBy="Training" SoftwareRevision="v32.05">
+<Description><![CDATA[
+AOI: MOTOR STARTER — Reusable motor control block with fault handling.
+WHAT IT DOES: Accepts Start/Stop/FaultReset commands, monitors feedback,
+detects faults (overload, feedback timeout), latches fault state, tracks run hours
+and start count in the backing UDT.
+
+HOW TO USE: Create a tag of type udtMotorStarterStatus (e.g., Motor_Conveyor).
+Call: aoiMotorStarter(Motor_Conveyor, <StartBit>, <StopBit>, <ResetBit>,
+                     <FeedbackBit>, <OverloadBit>, <Timeout_ms>,
+                     <RunningOut>, <FaultedOut>, Motor_Conveyor);
+
+WHY AOIs MATTER: Without this AOI, you'd copy-paste 10 rungs of motor logic
+for EVERY motor. With the AOI, it's ONE call per motor. If you find a bug,
+fix it ONCE in the AOI definition — all instances update.
+]]></Description>
+<Parameters>
+<Parameter Name="EnableIn" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="false" Visible="false" ExternalAccess="Read Only">
+<Description><![CDATA[Enable Input — System-defined. Set by the JSR/rung that calls this AOI.]]></Description>
+</Parameter>
+<Parameter Name="EnableOut" TagType="Base" DataType="BOOL" Usage="Output" Radix="Decimal" Required="false" Visible="false" ExternalAccess="Read Only">
+<Description><![CDATA[Enable Output — System-defined. TRUE when AOI executed successfully.]]></Description>
+</Parameter>
+<Parameter Name="StartCommand" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[RISING EDGE starts the motor (like pressing a green button). The AOI internally uses a one-shot so holding this TRUE won't restart a running motor.]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</Parameter>
+<Parameter Name="StopCommand" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[RISING EDGE stops the motor (like pressing a red button). Connected as XIO in the seal-in so TRUE=Stop.]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</Parameter>
+<Parameter Name="FaultResetCommand" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[RISING EDGE clears any latched fault and resets the diagnostic code to 0. Motor can then be restarted.]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</Parameter>
+<Parameter Name="Feedback_Running" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[Feedback signal from motor contactor auxiliary contact. TRUE = contactor is closed, motor should be running. This is how the PLC VERIFIES its command was executed. Without feedback, a welded contactor or broken wire goes undetected.]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</Parameter>
+<Parameter Name="Feedback_Overload" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[Overload relay status. TRUE = motor current exceeded rating, thermal overload tripped. This is HARDWARE protection — the overload relay opens the contactor circuit physically regardless of what the PLC commands. The PLC reads this to know WHY the motor stopped.]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</Parameter>
+<Parameter Name="Config_FeedbackTimeout_Milliseconds" TagType="Base" DataType="DINT" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[Maximum time (ms) the AOI waits for feedback after issuing a start command. If Feedback_Running doesn't go TRUE within this window, the AOI declares FaultCode=2 (FeedbackTimeout). Typical: 2000ms for small motors, 5000ms for large motors with star-delta starters.]]></Description>
+<DefaultData Format="L5K"><![CDATA[2000]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="2000"/></DefaultData>
+</Parameter>
+<Parameter Name="Status_Running" TagType="Base" DataType="BOOL" Usage="Output" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[TRUE when motor is commanded to run AND feedback confirms running. Use this bit for your process logic (not RunCommand — that just means "we asked", not "it actually is").]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</Parameter>
+<Parameter Name="Status_Faulted" TagType="Base" DataType="BOOL" Usage="Output" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description><![CDATA[TRUE when motor has a latched fault. Use this to: light a fault indicator, prevent start commands, trigger an alarm to the HMI/SCADA.]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</Parameter>
+<Parameter Name="PersistentData" TagType="Base" DataType="udtMotorStarterStatus" Usage="InOut" Required="true" Visible="true" Constant="false">
+<Description><![CDATA[BACKING TAG — must be a tag of type udtMotorStarterStatus. This is where the AOI stores accumulated data (RunHours, StartCount, FaultCode) that persists across scans. EVERY AOI instance needs its OWN unique backing tag. Never share a backing tag between two AOI calls — they will overwrite each other.]]></Description>
+</Parameter>
+</Parameters>
+<LocalTags>
+<LocalTag Name="Timer_FeedbackTimeout" DataType="TIMER" Radix="Decimal" ExternalAccess="None">
+<Description><![CDATA[Internal timer: measures how long we've been waiting for feedback after issuing start command. Reset automatically when feedback arrives or when RunCommand drops.]]></Description>
+</LocalTag>
+<LocalTag Name="Bit_OneShot_StartEdge" DataType="BOOL" Radix="Decimal" ExternalAccess="None">
+<Description><![CDATA[Storage bit for the start command one-shot. NEVER reuse this bit name in other AOIs or logic — one-shot storage bits MUST be unique per one-shot instance. The AOI's local tag scope guarantees this automatically.]]></Description>
+<DefaultData Format="L5K"><![CDATA[0]]></DefaultData>
+<DefaultData Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></DefaultData>
+</LocalTag>
+<LocalTag Name="Timer_OneSecondPulse" DataType="TIMER" Radix="Decimal" ExternalAccess="None">
+<Description><![CDATA[Free-running 1-second pulse timer used to accumulate run hours. Each pulse adds 1/3600 hour to the accumulator.]]></Description>
+</LocalTag>
+</LocalTags>
+<Routines>
+<Routine Name="Logic" Type="RLL">
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════════════╗
+║  CONCEPT: SEAL-IN CIRCUIT (Start/Stop Pattern)                          ║
+║  The MOST COMMON pattern in all of industrial automation.               ║
+║                                                                         ║
+║  HOW IT WORKS:                                                          ║
+║  1. StartCommand goes TRUE (rising edge via ONS)                        ║
+║  2. This energizes PersistentData.RunCommand (the "coil")               ║
+║  3. The parallel branch (PersistentData.RunCommand contact) "seals in"  ║
+║     — it keeps the coil energized even after StartCommand drops         ║
+║  4. StopCommand (XIO = TRUE when stop=0 ... wait, XIO means the rung   ║
+║     is TRUE when the bit is 0. So we pass StopCommand=1 to STOP.)       ║
+║     Actually: XIO(Stop)=TRUE when Stop=0 (not pressed).                  ║
+║     Wait — let me clarify: we want the rung to break when Stop=1.       ║
+║     XIO(tag) conducts when tag=0. So XIO(Stop) conducts when Stop=0.   ║
+║     When Stop=1, XIO opens → rung breaks → RunCommand drops.           ║
+║  5. Status_Faulted (XIO) — when the motor is faulted, break the seal   ║
+║     so the motor CANNOT run while faulted (safety interlock).           ║
+║                                                                         ║
+║  TO MODIFY: Change the contacts in series to add more stop conditions.  ║
+║  To add an E-Stop: just add XIO(EmergencyStopBit) in series.           ║
+╚══════════════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(StartCommand)ONS(Bit_OneShot_StartEdge)[XIC(PersistentData.RunCommand),XIC(Bit_OneShot_StartEdge)]XIO(StopCommand)XIO(Status_Faulted)OTE(PersistentData.RunCommand);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════╗
+║  CONCEPT: FEEDBACK TIMEOUT DETECTION (TON)                  ║
+║  After issuing RunCommand, we expect Feedback_Running       ║
+║  to go TRUE within Config_FeedbackTimeout_Milliseconds.     ║
+║  If it doesn't, something is wrong (contactor welded open,  ║
+║  broken wire, motor burned out, overload tripped).          ║
+║                                                             ║
+║  TON INSTRUCTION:                                           ║
+║  TON(TimerName, Preset, Accumulator)                        ║
+║  - When rung is TRUE, .ACC increments every millisecond     ║
+║  - When .ACC >= Preset, .DN (Done) bit goes TRUE            ║
+║  - When rung goes FALSE, timer RESETS to 0                  ║
+║  - The ? in Accumulator means "use the tag's default" (0)   ║
+║                                                             ║
+║  Here: RunCommand=1 AND Feedback=0 → timer runs.            ║
+║  If Feedback arrives → rung goes FALSE → timer resets.      ║
+║  If timer expires → .DN=1 → rung 3 declares fault.         ║
+╚══════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(PersistentData.RunCommand)XIO(Feedback_Running)TON(Timer_FeedbackTimeout,Config_FeedbackTimeout_Milliseconds,?);]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════╗
+║  CONCEPT: RUNNING STATUS (AND confirmation)                 ║
+║  Status_Running = RunCommand AND Feedback_Running.          ║
+║  Both must be TRUE — we COMMANDED it AND it CONFIRMED.      ║
+║  This is the "trust but verify" pattern.                    ║
+║  Use Status_Running in your process logic, NOT RunCommand   ║
+║  alone — because RunCommand=1 doesn't mean the motor        ║
+║  actually started (could be faulted, disconnected, etc.)    ║
+╚══════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(PersistentData.RunCommand)XIC(Feedback_Running)OTE(Status_Running);]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════╗
+║  CONCEPT: FAULT LATCH WITH MULTIPLE TRIGGERS (OTL)          ║
+║  OTL (Output Latch) sets the tag to 1 PERMANENTLY —         ║
+║  it stays 1 even after the rung goes FALSE.                 ║
+║  Only OTU (Output Unlatch) can reset it.                    ║
+║                                                             ║
+║  Parallel branches [A, B, C] = OR logic:                    ║
+║  Fault latches if overload OR feedback timeout OR           ║
+║  already faulted (self-sealing the latch).                  ║
+║                                                             ║
+║  WHY LATCH instead of OTE? Because faults are SAFETY-       ║
+║  CRITICAL — they must persist until a human acknowledges    ║
+║  and resets them. An OTE would clear as soon as the         ║
+║  overload condition clears, which is dangerous.             ║
+╚══════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[[XIC(Feedback_Overload),XIC(Timer_FeedbackTimeout.DN),XIC(Status_Faulted)]OTL(Status_Faulted);]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════╗
+║  CONCEPT: FAULT DIAGNOSTIC CODE (MOV)                ║
+║  Instead of just saying "faulted," we store a CODE   ║
+║  that tells maintenance WHAT failed.                 ║
+║  Code 1 = Overload (motor drawing too much current)  ║
+║  Code 2 = Feedback Timeout (contactor didn't close)  ║
+║  Code 3 = Feedback Loss (TBD — for future use)       ║
+║                                                     ║
+║  MOV(Source, Destination) copies a value.            ║
+║  Here: MOV(1, PersistentData.FaultDiagnosticCode)   ║
+║  stores the constant 1 into the UDT member.          ║
+║                                                     ║
+║  WHY USE CODES? A single "Faulted" bit tells you    ║
+║  SOMETHING is wrong. A code tells you WHAT.          ║
+║  Maintenance can look at the code and know which     ║
+║  spare part to grab before walking to the machine.   ║
+╚══════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(Feedback_Overload)MOV(1,PersistentData.FaultDiagnosticCode);]]></Text>
+</Rung>
+
+<Rung Number="5" Type="N">
+<Comment><![CDATA[Fault code 2: Feedback timeout (contactor aux contact never closed within timeout window).]]></Comment>
+<Text><![CDATA[XIC(Timer_FeedbackTimeout.DN)MOV(2,PersistentData.FaultDiagnosticCode);]]></Text>
+</Rung>
+
+<Rung Number="6" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════╗
+║  CONCEPT: FAULT RESET (OTU + cleanup)                    ║
+║  OTU (Output Unlatch) clears the latched fault bit.     ║
+║  We also reset the diagnostic code to 0 (NoFault).       ║
+║                                                          ║
+║  IMPORTANT: The reset should be a PUSH BUTTON edge,      ║
+║  not a maintained signal. If FaultReset were held TRUE,  ║
+║  the motor could restart immediately after a fault —     ║
+║  the reset would clear the fault before the operator     ║
+║  even saw what happened.                                 ║
+║                                                          ║
+║  In practice, you'd add a one-shot on FaultResetCommand  ║
+║  or rely on the HMI to pulse this bit.                   ║
+╚══════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(FaultResetCommand)OTU(Status_Faulted)MOV(0,PersistentData.FaultDiagnosticCode);]]></Text>
+</Rung>
+
+<Rung Number="7" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════╗
+║  CONCEPT: COUNTING MOTOR STARTS (CTU)                    ║
+║  CTU(CounterTag, Preset, Accumulator)                    ║
+║  Each FALSE→TRUE transition of the rung increments       ║
+║  .ACC by 1. Here we count each time the motor starts.    ║
+║                                                          ║
+║  We use StartCommand (not RunCommand) to count STARTS    ║
+║  not scans. The ONS ensures we count exactly once        ║
+║  per start edge (not every scan while starting).         ║
+║                                                          ║
+║  WHY COUNT STARTS? High start counts = contactor wear.   ║
+║  Use this for preventive maintenance: "replace contactor ║
+║  after 100,000 starts."                                  ║
+║                                                          ║
+║  NOTE: PersistentData.TotalStartCount is a DINT member   ║
+║  of the UDT, but CTU requires a COUNTER data type.       ║
+║  In the full implementation, you'd use a COUNTER tag     ║
+║  and MOV the .ACC into the UDT member periodically.      ║
+║  This rung shows the CONCEPT — in production, wrap       ║
+║  the CTU with a COUNTER local tag.                       ║
+╚══════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(StartCommand)ONS(Bit_OneShot_StartEdge)ADD(PersistentData.TotalStartCount,1,PersistentData.TotalStartCount);]]></Text>
+</Rung>
+
+<Rung Number="8" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════╗
+║  CONCEPT: ACCUMULATING RUN HOURS                         ║
+║  Run a 1-second timer while the motor is running.        ║
+║  Each time it expires (1 second elapsed), add            ║
+║  1/3600 = 0.0002778 hours to the accumulator.            ║
+║                                                          ║
+║  This is a "free-running pulse accumulator" pattern.     ║
+║  TON with a preset of 1000ms auto-resets each second     ║
+║  (because .DN goes TRUE → we use .DN to trigger math →   ║
+║  the timer keeps running because the rung is still TRUE) ║
+║  Wait — actually TON .DN stays TRUE once reached.        ║
+║  We need a different approach for continuous pulses.     ║
+║                                                          ║
+║  CORRECT APPROACH: Use a self-resetting timer pattern:   ║
+║  XIO(Timer.DN) TON(Timer, 1000, ?)                       ║
+║  XIC(Timer.DN) ADD(Hours, 0.0002778, Hours)              ║
+║  When .DN=1, the XIO opens → timer resets → .DN=0 →     ║
+║  XIO closes → timer starts again. This creates a         ║
+║  continuous 1Hz pulse while the motor runs.              ║
+╚══════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(Status_Running)XIO(Timer_OneSecondPulse.DN)TON(Timer_OneSecondPulse,1000,?);]]></Text>
+</Rung>
+
+<Rung Number="9" Type="N">
+<Comment><![CDATA[Each 1-second pulse (Timer_OneSecondPulse.DN=1), add 1/3600 hour to the accumulator. CPT lets us write the formula directly. Over a full shift, this gives accurate run-hour tracking for preventive maintenance.]]></Comment>
+<Text><![CDATA[XIC(Status_Running)XIC(Timer_OneSecondPulse.DN)CPT(PersistentData.AccumulatedRunHours,PersistentData.AccumulatedRunHours + (1.0 / 3600.0));]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+</Routines>
+</AddOnInstructionDefinition>
+</AddOnInstructionDefinitions>
+<Tags >
+
+<Tag Name="PB_StartCycle" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[SIMULATED INPUT: Green Start pushbutton. Operator presses to begin an inspection cycle. Momentary (spring-return) — TRUE only while pressed. Use XIC to detect press.]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="PB_StopCycle" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[SIMULATED INPUT: Red Stop pushbutton. Operator presses to halt the cycle. Momentary. Wired as normally-closed (NC) in a real panel for safety — if the wire breaks, the machine stops. Use XIO so that TRUE (pressed) = stops machine.]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="PB_EmergencyStop" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[SIMULATED INPUT: Emergency Stop mushroom button. Wired NC: when NOT pressed, circuit is complete = input reads 1. When pressed OR wire breaks, input reads 0. Use XIO so that input=0 (pressed/broken) makes the rung FALSE → stops everything. THIS IS THE SAFETY PATTERN.]]></Description>
+<Data Format="L5K"><![CDATA[1]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="1"/></Data>
+</Tag>
+<Tag Name="PB_FaultReset" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[SIMULATED INPUT: Blue Reset pushbutton. Operator presses to acknowledge and clear latched faults after fixing the problem. Should be momentary and should NOT auto-reset faults — the operator must intentionally press it.]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="SEN_PartAtInspectionStation" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[SIMULATED INPUT: Through-beam photo-eye sensor at the inspection station. TRUE = a part is blocking the beam (present). FALSE = no part. In real hardware, this would be wired to a 1756-IB16 input module.]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="SEN_SafetyGateClosed" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[SIMULATED INPUT: Safety gate limit switch. TRUE = gate is closed and locked. FALSE = gate is open (operator in hazardous area). Wired NC with forced-guided contacts for safety integrity.]]></Description>
+<Data Format="L5K"><![CDATA[1]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="1"/></Data>
+</Tag>
+<Tag Name="SEL_ManualModeActive" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[SIMULATED INPUT: 2-position selector switch. TRUE = Manual mode (jog controls). FALSE = Auto mode. In real panel, this would be a maintained switch.]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="SEL_AutoModeActive" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[SIMULATED INPUT: Auto mode selector (inverse of Manual). TRUE = Auto mode. Could be the same physical switch's other position.]]></Description>
+<Data Format="L5K"><![CDATA[1]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="1"/></Data>
+</Tag>
+
+<Tag Name="STS_SystemPowered" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[STATUS: Main control power is ON. Simulated as always TRUE for this training project. In reality, this comes from a control relay monitoring the 24VDC power supply.]]></Description>
+<Data Format="L5K"><![CDATA[1]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="1"/></Data>
+</Tag>
+<Tag Name="STS_SystemReady" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[STATUS: System is powered, E-Stop is clear, safety gate closed, no faults. This is the "all clear" bit — if this is FALSE, the machine should not move.]]></Description>
+</Tag>
+<Tag Name="STS_MachineInAnyMode" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[STATUS: TRUE when in Manual OR Auto mode. Derived from the selector switch inputs.]]></Description>
+</Tag>
+<Tag Name="STS_InspectionCycleActive" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[STATUS: TRUE when an inspection cycle is in progress (part detected, timers running, weight being measured). Used as enable for inspection logic.]]></Description>
+</Tag>
+<Tag Name="STS_InspectionCycleComplete" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[STATUS: TRUE for one scan when inspection finishes (pulsed). Triggers: counter increment, data logging, part history update.]]></Description>
+</Tag>
+<Tag Name="STS_WeightWithinTolerance" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[STATUS: TRUE when the measured part weight is within the acceptable tolerance band. Drives the Pass/Fail decision.]]></Description>
+</Tag>
+<Tag Name="STS_WeightUnderTarget" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[STATUS: TRUE when measured weight is below (TargetWeight - Tolerance). Used for reject sorting — underweight parts go to one bin.]]></Description>
+</Tag>
+<Tag Name="STS_WeightOverTarget" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[STATUS: TRUE when measured weight is above (TargetWeight + Tolerance). Used for reject sorting — overweight parts go to a different bin.]]></Description>
+</Tag>
+
+<Tag Name="CMD_ConveyorMotorRun" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[COMMAND: Run the main conveyor motor. In a real system, this would be wired to a 1756-OB16 output module driving a motor contactor coil.]]></Description>
+</Tag>
+<Tag Name="CMD_BuzzerCycleComplete" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[COMMAND: Sound buzzer/beacon when cycle completes. Alerts operator to remove part.]]></Description>
+</Tag>
+<Tag Name="CMD_RejectGateOpen" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[COMMAND: Open reject gate to divert failed part to reject bin. Would drive a pneumatic solenoid in real hardware.]]></Description>
+</Tag>
+
+<Tag Name="CFG_TargetPartWeight_Grams" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CONFIG: Target/specification weight for the part being produced. Change this when running a different part number. Typical range: 200-300 grams for molded plastic parts.]]></Description>
+<Data Format="L5K"><![CDATA[250.0]]></Data>
+<Data Format="Decorated"><DataValue DataType="REAL" Radix="Float" Value="250.0"/></Data>
+</Tag>
+<Tag Name="CFG_WeightTolerance_PlusMinusGrams" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CONFIG: Acceptable weight tolerance band (+/- grams). Part passes if: (Target - Tolerance) <= MeasuredWeight <= (Target + Tolerance). Tighter tolerance = higher quality, more rejects.]]></Description>
+<Data Format="L5K"><![CDATA[5.0]]></Data>
+<Data Format="Decorated"><DataValue DataType="REAL" Radix="Float" Value="5.0"/></Data>
+</Tag>
+<Tag Name="CFG_BatchSize_TotalParts" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CONFIG: Total parts to produce in this batch. Counter decrements from this value. When it reaches zero, the batch is complete. Set by operator through HMI.]]></Description>
+<Data Format="L5K"><![CDATA[100]]></Data>
+<Data Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="100"/></Data>
+</Tag>
+<Tag Name="CFG_ShiftTarget_TotalParts" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CONFIG: Production target for the shift (500 parts). Used in OEE calculations to compare actual vs planned production.]]></Description>
+<Data Format="L5K"><![CDATA[500]]></Data>
+<Data Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="500"/></Data>
+</Tag>
+<Tag Name="CFG_InspectionDelay_Milliseconds" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CONFIG: Delay in milliseconds between part-detected and start of weight measurement. Allows the part to settle on the scale before reading. Typical: 500-2000ms depending on conveyor speed.]]></Description>
+<Data Format="L5K"><![CDATA[1500]]></Data>
+<Data Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="1500"/></Data>
+</Tag>
+<Tag Name="CFG_InspectionWindow_Milliseconds" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CONFIG: Duration of the weight measurement window. The PLC takes multiple readings during this window and averages them. Longer = more accurate but slower cycle time.]]></Description>
+<Data Format="L5K"><![CDATA[500]]></Data>
+<Data Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="500"/></Data>
+</Tag>
+
+<Tag Name="CALC_PartWeightRaw_Integer" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CALCULATED: Raw weight reading from analog scale (as integer). In real hardware, this comes from a 1756-IF8 analog input module reading a 4-20mA load cell signal. We simulate it.]]></Description>
+</Tag>
+<Tag Name="CALC_PartWeight_Grams" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CALCULATED: Converted weight in grams (REAL). Formula: RawInteger / ScalingFactor. REAL type preserves fractional grams for high-precision applications.]]></Description>
+</Tag>
+<Tag Name="CALC_WeightDeviation_Grams" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CALCULATED: Absolute deviation from target = |MeasuredWeight - TargetWeight|. Used to determine pass/fail and to calculate process capability (Cp/Cpk).]]></Description>
+</Tag>
+<Tag Name="CALC_GoodMinusReject" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CALCULATED: Net good parts = GoodParts - RejectParts. Could go negative if more rejects than good parts (process problem indicator).]]></Description>
+</Tag>
+<Tag Name="CALC_ProductionRate_PartsPerHour" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CALCULATED: Real-time production rate (parts per hour). Formula: (PartCount * 3600) / ElapsedSeconds. Updated every 10 seconds by the periodic task.]]></Description>
+</Tag>
+<Tag Name="CALC_EvenOdd_Remainder" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CALCULATED: Result of PartCount MOD 2. 0 = even number of parts, 1 = odd. Demonstrates the MOD (modulo/remainder) instruction.]]></Description>
+</Tag>
+
+<Tag Name="CALC_OEE_Availability" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[OEE: AVAILABILITY metric. Ratio of actual run time to planned production time. 1.0 = 100% (machine never stopped). Factors in: breakdowns, changeovers, waiting for material.]]></Description>
+</Tag>
+<Tag Name="CALC_OEE_Performance" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[OEE: PERFORMANCE metric. Ratio of actual production rate to ideal (nameplate) rate. Factors in: slow cycles, minor stops, reduced speed.]]></Description>
+</Tag>
+<Tag Name="CALC_OEE_Quality" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[OEE: QUALITY metric. Ratio of good parts to total parts. Factors in: rejects, rework, startup scrap. Quality = GoodParts / (GoodParts + RejectParts).]]></Description>
+</Tag>
+
+<Tag Name="CTR_TotalPartsProduced" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[COUNTER: Lifetime parts produced (DINT, direct increment). Alternative to using COUNTER data type — DINT gives more control but no built-in .DN/.OV bits.]]></Description>
+</Tag>
+<Tag Name="CTR_GoodPartsThisShift" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[COUNTER: Parts that passed inspection this shift. Resets at shift change.]]></Description>
+</Tag>
+<Tag Name="CTR_RejectPartsThisShift" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[COUNTER: Parts that failed inspection this shift. Underweight + Overweight + Other failures.]]></Description>
+</Tag>
+
+<Tag Name="TMR_SettleDelay" TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[TIMER (TON): Delay between part detection and measurement start. Gives part time to settle on the scale. Preset loaded from CFG_InspectionDelay_Milliseconds at runtime.]]></Description>
+</Tag>
+<Tag Name="TMR_MeasurementWindow" TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[TIMER (TON): Active measurement window. While this timer is running, the PLC takes weight readings. .DN marks end of measurement.]]></Description>
+</Tag>
+<Tag Name="TMR_ConveyorRunOffDelay" TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[TIMER (TOF): Keeps conveyor running for 3 seconds after part clears sensor. This advances the next part into position. TOF starts timing when rung goes FALSE (part no longer detected).]]></Description>
+</Tag>
+<Tag Name="TMR_AccumulatedShiftRunTime" TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[TIMER (RTO): RETENTIVE timer — accumulates run time across many start/stop cycles. Does NOT reset when machine stops. Must be manually reset at shift change. Used for OEE Availability calculation.]]></Description>
+</Tag>
+<Tag Name="TMR_TenSecondPulse" TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[TIMER (TON): Self-resetting 10-second pulse generator. Used by periodic task to trigger OEE recalculations. Pattern: XIO(TMR.DN) TON(TMR,10000,?) — when .DN=1, XIO opens, timer resets, cycle repeats.]]></Description>
+</Tag>
+
+<Tag Name="CTR_TotalParts" TagType="Base" DataType="COUNTER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[COUNTER (CTU): Total parts inspected (lifetime). Uses COUNTER data type for built-in overflow detection (.OV bit). Preset = 2,000,000,000 (near DINT max).]]></Description>
+</Tag>
+<Tag Name="CTR_BatchRemaining" TagType="Base" DataType="COUNTER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[COUNTER (CTD): Count-Down from batch size. When .ACC reaches 0, .DN goes TRUE — batch complete. Operator loads new batch and presets counter.]]></Description>
+</Tag>
+<Tag Name="CTR_GoodParts" TagType="Base" DataType="COUNTER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[COUNTER (CTU): Good parts this shift. Incremented only when inspection passes. Used for OEE Quality calculation.]]></Description>
+</Tag>
+
+<Tag Name="ALM_EmergencyStopLatched" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[ALARM: Latched when E-Stop is pressed. Stays TRUE until reset, even after E-Stop is released. This ensures the operator must intentionally acknowledge the alarm.]]></Description>
+</Tag>
+<Tag Name="ALM_CounterOverflowWarning" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[ALARM: CTR_TotalParts.OV = TRUE. Counter is near 2.1 billion limit. Reset or risk data loss.]]></Description>
+</Tag>
+
+<Tag Name="Part_CurrentInspection" TagType="Base" DataType="udtPartInspectionRecord" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[UDT INSTANCE: Holds data for the part currently being inspected. Members accessed as Part_CurrentInspection.RecordID, .MeasuredWeight_Grams, etc.]]></Description>
+</Tag>
+<Tag Name="Motor_ConveyorStarter" TagType="Base" DataType="udtMotorStarterStatus" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[UDT INSTANCE: Backing data for the conveyor motor's aoiMotorStarter AOI. Stores accumulated hours, start count, fault codes for the conveyor motor.]]></Description>
+</Tag>
+<Tag Name="Motor_CoolingFanStarter" TagType="Base" DataType="udtMotorStarterStatus" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[UDT INSTANCE: Backing data for the cooling fan motor's aoiMotorStarter AOI. Demonstrates AOI REUSE — same AOI, different motor, independent data.]]></Description>
+</Tag>
+
+<Tag Name="ARR_PartInspectionHistory" TagType="Base" DataType="udtPartInspectionRecord" Dimensions="50" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[ARRAY (UDT): Rolling buffer of the last 50 inspection records. New records overwrite oldest (circular buffer). Each element is a full udtPartInspectionRecord with all members. Access: ARR_PartInspectionHistory[7].MeasuredWeight_Grams]]></Description>
+</Tag>
+<Tag Name="ARR_HourlyProductionCounts" TagType="Base" DataType="DINT" Dimensions="24" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[ARRAY (DINT): Parts produced each hour for the last 24 hours. Index 0 = midnight-1am, Index 23 = 11pm-midnight. Used for production reporting and shift handover.]]></Description>
+</Tag>
+<Tag Name="ARR_ShiftReportValues" TagType="Base" DataType="REAL" Dimensions="8" Radix="Float" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[ARRAY (REAL): 8 shift report metric slots: [0]=TotalParts, [1]=GoodParts, [2]=RejectParts, [3]=Availability, [4]=Performance, [5]=Quality, [6]=AvgWeight, [7]=CycleTimeAvg.]]></Description>
+</Tag>
+
+<Tag Name="BIT_OneShotStore_PartEdge" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[INTERNAL: One-shot storage bit for the part sensor rising edge. NEVER reuse this bit for any other one-shot — each ONS/OSR/OSF must have a UNIQUE storage bit. If you reuse it, both one-shots fight over the same bit and neither works correctly.]]></Description>
+</Tag>
+<Tag Name="BIT_OneShotStore_CycleComplete" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[INTERNAL: One-shot storage for cycle complete pulse.]]></Description>
+</Tag>
+<Tag Name="BIT_SkipDebugSection" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[INTERNAL: Debug flag. Set to TRUE to skip the debug/troubleshooting rung section (via JMP/LBL). Demonstrates conditional code execution.]]></Description>
+</Tag>
+<Tag Name="BIT_ForLoopIndex" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[INTERNAL: Loop index variable for FOR/NXT loops. The FOR instruction writes to this tag; your loop body reads from it. Must be DINT type.]]></Description>
+</Tag>
+<Tag Name="BIT_GenericCalculationResult" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[INTERNAL: Scratchpad for temporary calculation results. Used when a math instruction's result is needed only briefly.]]></Description>
+</Tag>
+
+<Tag Name="CST_MaxBatchSize" TagType="Base" DataType="DINT" Radix="Decimal" Constant="true" ExternalAccess="Read Only">
+<Description><![CDATA[CONSTANT: Absolute maximum batch size (safety limit). Prevents operator from accidentally entering 999999 and running the machine indefinitely.]]></Description>
+<Data Format="L5K"><![CDATA[1000]]></Data>
+<Data Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="1000"/></Data>
+</Tag>
+<Tag Name="CST_SecondsPerHour" TagType="Base" DataType="REAL" Radix="Float" Constant="true" ExternalAccess="Read Only">
+<Description><![CDATA[CONSTANT: 3600.0 seconds per hour. Used in rate calculations. Stored as constant so it can't be accidentally overwritten by a MOV instruction.]]></Description>
+<Data Format="L5K"><![CDATA[3600.0]]></Data>
+<Data Format="Decorated"><DataValue DataType="REAL" Radix="Float" Value="3600.0"/></Data>
+</Tag>
+<Tag Name="CST_MillisecondsPerHour" TagType="Base" DataType="REAL" Radix="Float" Constant="true" ExternalAccess="Read Only">
+<Description><![CDATA[CONSTANT: 3,600,000 milliseconds per hour. Used when timer .ACC values (in ms) need to be converted to hours for OEE calculations.]]></Description>
+<Data Format="L5K"><![CDATA[3600000.0]]></Data>
+<Data Format="Decorated"><DataValue DataType="REAL" Radix="Float" Value="3600000.0"/></Data>
+</Tag>
+</Tags>
+<Programs >
+
+<Program Name="MainProgram" TestEdits="false" MainRoutineName="Routine_MainOrchestrator" Disabled="false" UseAsFolder="false">
+<Description><![CDATA[
+MAIN PROGRAM — Container for all concept routines. MainRoutineName = Routine_MainOrchestrator,
+which is the entry point called every scan. The orchestrator uses JSR instructions to call
+each concept routine in sequence. This is the STANDARD ARCHITECTURE for Studio 5000 projects:
+one MainRoutine that JSRs to modular subroutines.
+]]></Description>
+
+<Tags >
+<Tag Name="STS_ProgramLocalFlag" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[PROGRAM-SCOPED TAG: Only visible inside MainProgram. If you create a tag with the same name in Periodic_Calc, they are DIFFERENT tags — each program has its own namespace. Demonstrates tag scope.]]></Description>
+</Tag>
+<Tag Name="CTR_ProgramLocalCounter" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[PROGRAM-SCOPED TAG: A counter that only this program can see. Good practice: keep program-internal data local. Put shared data in Controller Tags.]]></Description>
+</Tag>
+</Tags>
+
+<Routines >
+
+<Routine Name="Routine_MainOrchestrator" Type="RLL">
+<Description><![CDATA[
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║  MAIN ORCHESTRATOR — Entry point called every scan by the Continuous Task.      ║
+║  Uses JSR (Jump to Subroutine) to call each concept routine in sequence.        ║
+║  This is the STANDARD ARCHITECTURE for Studio 5000 projects:                    ║
+║  MainRoutine = lightweight orchestrator that JSRs to modular subroutines.       ║
+║                                                                                 ║
+║  JSR SYNTAX: JSR(RoutineName, NumInputParams, NumReturnParams)                  ║
+║  - RoutineName: name of the routine to call (must exist in same program)        ║
+║  - NumInputParams: how many input parameters to pass (0 if none)                ║
+║  - NumReturnParams: how many return parameters to expect (0 if none)            ║
+║                                                                                 ║
+║  EXECUTION ORDER: Rungs execute TOP TO BOTTOM every scan. This means            ║
+║  Bit_Logic runs BEFORE Timers_Counters, which runs BEFORE Math_Compare, etc.    ║
+║  Order MATTERS — if Math_Compare needs a value computed in Timers_Counters,     ║
+║  Timers_Counters MUST be called first.                                          ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+]]></Description>
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  ROUTINE 1: Bit_Logic                                           ║
+║  Teaches: XIC, XIO, OTE, OTL, OTU, ONS                          ║
+║           Series (AND) logic, Parallel branches (OR)             ║
+║           Seal-in circuits, Safety interlock patterns            ║
+║  JSR with 0 input params, 0 return params.                      ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[JSR(Routine_BitLogic,0,0);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[ROUTINE 2: Timers_Counters — TON, TOF, RTO, CTU, CTD, RES, timer/counter status bits (.DN, .TT, .OV).]]></Comment>
+<Text><![CDATA[JSR(Routine_TimersCounters,0,0);]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[ROUTINE 3: Math_Compare — ADD, SUB, MUL, DIV, CPT, MOD, SQR, ABS, EQU, NEQ, GRT, LES, GEQ, LEQ, LIM, CMP.]]></Comment>
+<Text><![CDATA[JSR(Routine_MathCompare,0,0);]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[ROUTINE 4: Move_Data — MOV, COP, CPS, CLR, indirect/indexed addressing with array[index].]]></Comment>
+<Text><![CDATA[JSR(Routine_MoveData,0,0);]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[ROUTINE 5: Program_Control — JMP, LBL, FOR, NXT, RET, conditional execution patterns.]]></Comment>
+<Text><![CDATA[JSR(Routine_ProgramControl,0,0);]]></Text>
+</Rung>
+
+<Rung Number="5" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  AOI CALL: Conveyor Motor Starter                               ║
+║  Instantiates aoiMotorStarter with Motor_ConveyorStarter as     ║
+║  the backing UDT tag. Parameters:                               ║
+║  Start = PB_StartCycle       Stop = PB_EmergencyStop            ║
+║  FaultReset = PB_FaultReset  Feedback = CMD_ConveyorMotorRun    ║
+║  Overload = ALM_EmergencyStopLatched (simulated)                ║
+║  Timeout = 2000ms             Output: CMD_ConveyorMotorRun       ║
+║                                                                 ║
+║  Note: In a real project, Feedback would be the AUX contact     ║
+║  of the physical contactor, not the command output.              ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[aoiMotorStarter(Motor_ConveyorStarter,PB_StartCycle,PB_StopCycle,PB_FaultReset,CMD_ConveyorMotorRun,ALM_EmergencyStopLatched,2000,CMD_ConveyorMotorRun,ALM_EmergencyStopLatched,Motor_ConveyorStarter);]]></Text>
+</Rung>
+
+<Rung Number="6" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  AOI REUSE DEMONSTRATION: Cooling Fan Motor Starter              ║
+║  SAME AOI, DIFFERENT backing tag (Motor_CoolingFanStarter).      ║
+║  Each motor has INDEPENDENT run hours, start counts, faults.     ║
+║  This is why AOIs exist: write the logic ONCE, instantiate       ║
+║  MANY times. Like calling a function with different arguments.   ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[aoiMotorStarter(Motor_CoolingFanStarter,PB_StartCycle,SEN_PartAtInspectionStation,PB_FaultReset,CMD_ConveyorMotorRun,ALM_EmergencyStopLatched,1500,CMD_BuzzerCycleComplete,ALM_EmergencyStopLatched,Motor_CoolingFanStarter);]]></Text>
+</Rung>
+
+<Rung Number="7" Type="N">
+<Comment><![CDATA[ROUTINE 6: Structured Text Demo — same concepts expressed in IEC 61131-3 Structured Text language. JSR can call ANY routine type (RLL, ST, FBD, SFC).]]></Comment>
+<Text><![CDATA[JSR(Routine_StructuredTextDemo,0,0);]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+
+<Routine Name="Routine_BitLogic" Type="RLL">
+<Description><![CDATA[
+BIT LOGIC ROUTINE — The foundation of ALL PLC programming.
+Covers: XIC (normally-open contact), XIO (normally-closed contact),
+OTE (output coil), OTL (latch), OTU (unlatch), ONS (one-shot rising).
+Series = AND logic. Parallel branches [ ] = OR logic.
+]]></Description>
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════════════╗
+║  CONCEPT: SEAL-IN CIRCUIT (Start/Stop Pattern)                          ║
+║  THE most important pattern in PLC programming. You will use this       ║
+║  everywhere: motor starters, cycle enables, mode selections.            ║
+║                                                                         ║
+║  HOW TO READ THIS RUNG (left to right):                                 ║
+║  1. XIC(PB_StartCycle) — TRUE when Start button is pressed              ║
+║  2. [XIC(STS_SystemReady), XIC(PB_StartCycle)] — PARALLEL BRANCH:      ║
+║     EITHER the SystemReady seal-in contact is closed OR the Start       ║
+║     button is pressed. This is OR logic.                                ║
+║  3. XIO(PB_StopCycle) — TRUE when Stop button is NOT pressed (XIO      ║
+║     = "Examine If Open", conducts when tag is 0). When pressed=1,      ║
+║     XIO opens, breaking the rung.                                       ║
+║  4. XIO(PB_EmergencyStop) — TRUE when E-Stop is NOT pressed. This      ║
+║     is the SAFETY PATTERN: if E-Stop is pressed (tag=0) or the wire    ║
+║     breaks (tag=0), XIO opens, rung breaks, machine stops.             ║
+║  5. XIC(STS_SystemPowered) — TRUE when control power is on.            ║
+║  6. OTE(STS_SystemReady) — OUTPUT COIL: energized when the entire      ║
+║     rung is TRUE. This tag stays TRUE even after StartPB is released   ║
+║     because the parallel contact [XIC(STS_SystemReady)] seals it in.   ║
+║                                                                         ║
+║  TRACE THE SIGNAL:                                                      ║
+║  t=0: Everything off. STS_SystemReady=0.                                ║
+║  t=1: Operator presses PB_StartCycle. XIC closes → rung TRUE →         ║
+║       STS_SystemReady=1. Parallel branch contact closes.                ║
+║  t=2: Operator releases PB_StartCycle. XIC opens, BUT the parallel     ║
+║       branch XIC(STS_SystemReady) is still TRUE → rung stays TRUE.     ║
+║  t=3: Operator presses PB_StopCycle (tag=1). XIO opens → rung FALSE   ║
+║       → STS_SystemReady=0. Seal broken.                                 ║
+║                                                                         ║
+║  TO ADD ANOTHER STOP CONDITION: Insert XIO(YourNewStopBit) in series.   ║
+║  TO ADD ANOTHER START CONDITION: Add a parallel branch.                ║
+╚══════════════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(PB_StartCycle)[XIC(STS_SystemReady),XIC(PB_StartCycle)]XIO(PB_StopCycle)XIO(PB_EmergencyStop)XIC(STS_SystemPowered)OTE(STS_SystemReady);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: LATCH (OTL) — "Set and Forget"                        ║
+║  OTL(ALM_EmergencyStopLatched) sets this bit to 1 PERMANENTLY.  ║
+║  Even when PB_EmergencyStop is released (tag goes back to 1,    ║
+║  XIO conducts again, rung goes FALSE), the OTL bit STAYS at 1.  ║
+║                                                                 ║
+║  WHY LATCH ALARMS? Because an E-Stop event is SAFETY-CRITICAL.  ║
+║  The operator must: (1) see the alarm, (2) understand WHY,      ║
+║  (3) fix the problem, (4) press Reset. An OTE would clear       ║
+║  as soon as the E-Stop is released — the alarm would disappear  ║
+║  before anyone saw it.                                          ║
+║                                                                 ║
+║  OTL vs OTE:                                                    ║
+║  - OTE: follows rung condition (rung TRUE → 1, FALSE → 0)       ║
+║  - OTL: sets to 1 forever (only OTU can change it)              ║
+║  - For normal outputs, use OTE. For alarms/states, use OTL/OTU. ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIO(PB_EmergencyStop)OTL(ALM_EmergencyStopLatched);]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: UNLATCH (OTU) — "Clear the Alarm"                     ║
+║  OTU resets the latched bit to 0.                               ║
+║  Paired with OTL rung 1 above: OTL sets, OTU clears.            ║
+║  EVERY OTL MUST HAVE A CORRESPONDING OTU somewhere.             ║
+║  If you forget the OTU, the bit stays latched FOREVER —         ║
+║  the machine can never restart after a fault.                   ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(PB_FaultReset)OTU(ALM_EmergencyStopLatched);]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: ONE-SHOT RISING (ONS) — "Exactly One Scan"            ║
+║  ONS(BIT_OneShotStore_PartEdge) makes the rung TRUE for exactly ║
+║  ONE scan when the part sensor transitions from FALSE→TRUE.     ║
+║                                                                 ║
+║  WHY? Without the ONS, every scan while the part is present     ║
+║  would increment counters, log data, etc. — thousands of times  ║
+║  per second. The ONS limits it to ONE action per part.          ║
+║                                                                 ║
+║  CRITICAL RULE: Each ONS/OSR/OSF needs its OWN storage bit.     ║
+║  BIT_OneShotStore_PartEdge tracks the "previous scan's value."  ║
+║  If you reuse this bit for another ONS, both will malfunction.  ║
+║  The storage bit MUST be unique per one-shot instruction.       ║
+║                                                                 ║
+║  This rung: Part detected → pulse STS_ProgramLocalFlag for      ║
+║  one scan. Used elsewhere as "new part just arrived" trigger.   ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(SEN_PartAtInspectionStation)ONS(BIT_OneShotStore_PartEdge)OTE(STS_ProgramLocalFlag);]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: SERIES CONTACTS = AND LOGIC                           ║
+║  ALL contacts in series must be TRUE for the output to fire.    ║
+║  GateClosed=1 AND E-Stop NOT pressed AND SystemReady=1          ║
+║  AND MachineInAnyMode=1 → InspectionCycleActive=1               ║
+║                                                                 ║
+║  This is a "permissive" chain: ALL conditions must be met       ║
+║  before the cycle can start. If ANY one fails, cycle stops.     ║
+║  This is the standard safety interlock pattern.                 ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(SEN_SafetyGateClosed)XIO(PB_EmergencyStop)XIC(STS_SystemReady)XIC(STS_MachineInAnyMode)OTE(STS_InspectionCycleActive);]]></Text>
+</Rung>
+
+<Rung Number="5" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: PARALLEL BRANCHES = OR LOGIC                          ║
+║  Brackets [branch1, branch2] create parallel paths.             ║
+║  Either ManualMode OR AutoMode being TRUE makes this rung TRUE. ║
+║  This is how you implement "mode selector switch" logic.        ║
+║                                                                 ║
+║  To add more modes: add another comma-separated branch.         ║
+║  Example: [XIC(Manual), XIC(Auto), XIC(Setup)] — any of three. ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[[XIC(SEL_ManualModeActive),XIC(SEL_AutoModeActive)]OTE(STS_MachineInAnyMode);]]></Text>
+</Rung>
+
+<Rung Number="6" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: COMBINED SERIES + PARALLEL                             ║
+║  SystemReady is in series with a parallel branch.                ║
+║  Result: SystemReady=1 AND (ManualMode OR AutoMode).             ║
+║  This pattern is extremely common: a master enable in series     ║
+║  with mode-specific conditions in parallel.                      ║
+║                                                                 ║
+║  TRUTH TABLE:                                                    ║
+║  SystemReady  Manual  Auto  |  Output                           ║
+║  ─────────────────────────  |  ──────                           ║
+║     0          X      X     |    0  (SystemReady blocks all)    ║
+║     1          0      0     |    0  (no mode selected)          ║
+║     1          1      0     |    1  (Manual mode)               ║
+║     1          0      1     |    1  (Auto mode)                 ║
+║     1          1      1     |    1  (both — improbable)         ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(STS_SystemReady)[XIC(SEL_ManualModeActive),XIC(SEL_AutoModeActive)]OTE(STS_ProgramLocalFlag);]]></Text>
+</Rung>
+
+<Rung Number="7" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: MULTIPLE OUTPUTS ON ONE RUNG                           ║
+║  When the cycle completes, energize conveyor AND buzzer AND      ║
+║  reject gate simultaneously. All outputs respond to the same     ║
+║  rung condition. No need for three separate rungs.               ║
+║                                                                 ║
+║  CAUTION: If you put OTL and OTE on the same rung, the OTL      ║
+║  will STAY latched even after the rung condition goes FALSE.     ║
+║  Make sure you understand which outputs need OTE vs OTL.         ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(STS_InspectionCycleComplete)OTE(CMD_ConveyorMotorRun)OTE(CMD_BuzzerCycleComplete)OTL(CMD_RejectGateOpen);]]></Text>
+</Rung>
+
+<Rung Number="8" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: XIO AS SAFETY INTERLOCK                                ║
+║  XIO(PB_EmergencyStop) = rung TRUE when E-Stop is NOT pressed.  ║
+║  This rung runs the conveyor ONLY when the E-Stop is clear.      ║
+║  If E-Stop is pressed (input drops to 0), XIO opens, conveyor    ║
+║  stops. If the E-Stop WIRE BREAKS (input drops to 0), it also    ║
+║  stops — this is FAIL-SAFE behavior.                             ║
+║                                                                 ║
+║  WHY XIO AND NOT XIC? With XIC, a broken wire reads as FALSE,   ║
+║  which would PREVENT the rung from being TRUE — but it would     ║
+║  also prevent the machine from starting. The difference is       ║
+║  subtle: XIO makes "sensor absent = safe state." Both patterns   ║
+║  have valid use cases. For E-Stops, use XIO with NC wiring.     ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIO(PB_EmergencyStop)XIC(STS_SystemPowered)OTE(CMD_ConveyorMotorRun);]]></Text>
+</Rung>
+
+<Rung Number="9" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: NEGATION PATTERN (XIO of .DN bit)                     ║
+║  XIO(TMR_SettleDelay.DN) = TRUE while the settle delay timer    ║
+║  has NOT finished. This creates a "while waiting" condition.    ║
+║                                                                 ║
+║  Combined with the XIC before it:                               ║
+║  "Cycle is active AND settle timer is NOT done yet"             ║
+║  = "We are in the settle phase of the cycle."                   ║
+║                                                                 ║
+║  This is how you create timed phases within a sequence.         ║
+║  Common pattern: XIC(SequenceActive) XIO(Phase1Timer.DN) →      ║
+║  Phase 1 is executing. When timer.DN=1, phase 1 ends,           ║
+║  next rung handles phase 2.                                     ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(STS_InspectionCycleActive)XIO(TMR_SettleDelay.DN)OTE(STS_ProgramLocalFlag);]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+
+<Routine Name="Routine_TimersCounters" Type="RLL">
+<Description><![CDATA[TIMERS & COUNTERS ROUTINE. Timer types: TON (delay on), TOF (delay off), RTO (retentive). Counter types: CTU (up), CTD (down). Status bits: .EN, .TT, .DN, .OV, .UN. Reset: RES.]]></Description>
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: TON — Timer On Delay                                  ║
+║  INSTRUCTION: TON(TimerName, Preset, Accumulator)                ║
+║  - Rung TRUE → timer increments .ACC every millisecond          ║
+║  - .ACC >= Preset → .DN (Done) bit = 1                          ║
+║  - Rung FALSE → timer RESETS: .ACC=0, .DN=0, .TT=0              ║
+║                                                                 ║
+║  HERE: Part detected → start settle delay timer.                ║
+║  Preset = CFG_InspectionDelay_Milliseconds (default 1500ms).    ║
+║  The part needs time to stop vibrating on the scale before      ║
+║  we take a weight reading.                                      ║
+║                                                                 ║
+║  TIMER SUB-ELEMENTS (read these in your logic):                 ║
+║  TMR_SettleDelay.EN  = Timer is enabled (rung TRUE)             ║
+║  TMR_SettleDelay.TT  = Timer is actively timing                 ║
+║  TMR_SettleDelay.DN  = Timer is done (.ACC >= preset)           ║
+║  TMR_SettleDelay.ACC = Current elapsed time (ms)                ║
+║  TMR_SettleDelay.PRE = Preset value (you can write to this!)    ║
+║                                                                 ║
+║  ? in accumulator field = "use existing/default value" (0).     ║
+║  You can also write: TON(TMR, 1500, 0) for explicit ACC=0.     ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(SEN_PartAtInspectionStation)TON(TMR_SettleDelay,CFG_InspectionDelay_Milliseconds,?);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: CHAINED TIMERS (Ton after another Ton)                ║
+║  After the settle delay expires, start the measurement window.  ║
+║  TMR_SettleDelay.DN = 1 → TMR_MeasurementWindow starts timing.  ║
+║  Preset = CFG_InspectionWindow_Milliseconds (default 500ms).    ║
+║                                                                 ║
+║  This creates a TWO-PHASE timing sequence:                      ║
+║  Phase 1 (settle): PartSensor=1, SettleDelay timing             ║
+║  Phase 2 (measure): SettleDelay.DN=1, MeasurementWindow timing  ║
+║  Phase 3 (done):    MeasurementWindow.DN=1 → result available   ║
+║                                                                 ║
+║  This "cascaded timer" pattern is how you build sequential      ║
+║  machine steps without a full state machine.                    ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_SettleDelay.DN)XIC(SEN_PartAtInspectionStation)TON(TMR_MeasurementWindow,CFG_InspectionWindow_Milliseconds,?);]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: TOF — Timer Off Delay                                 ║
+║  TOF(TimerName, Preset, Accumulator)                             ║
+║  - Rung TRUE → .DN=1, .ACC=0 (output is ON)                     ║
+║  - Rung FALSE → timer STARTS counting (output stays ON)         ║
+║  - .ACC >= Preset → .DN=0 (output turns OFF)                    ║
+║                                                                 ║
+║  TOF is the OPPOSITE of TON: it delays turning OFF, not ON.     ║
+║                                                                 ║
+║  HERE: When part clears sensor (XIO goes TRUE, rung FALSE),     ║
+║  keep conveyor running for 3 more seconds. This advances the    ║
+║  next part into position before stopping.                       ║
+║                                                                 ║
+║  USE CASE: Conveyor "run-on" after part passes, cooling fan     ║
+║  that runs for N seconds after machine stops, lubrication       ║
+║  pump that cycles after each operation.                         ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIO(SEN_PartAtInspectionStation)TOF(TMR_ConveyorRunOffDelay,3000,?);]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: RTO — Retentive Timer On                               ║
+║  RTO(TimerName, Preset, Accumulator)                             ║
+║  - Rung TRUE → .ACC increments                                   ║
+║  - Rung FALSE → .ACC HOLDS ITS VALUE (does NOT reset!)           ║
+║  - Only RES instruction can reset .ACC to 0                      ║
+║                                                                 ║
+║  HERE: Accumulate total machine run time across all cycles       ║
+║  and start/stop events. This timer "remembers" elapsed time      ║
+║  even when the machine is idle.                                  ║
+║                                                                 ║
+║  USE CASE: Total shift run time (OEE calculation), preventive    ║
+║  maintenance scheduler ("change oil every 500 run-hours"),       ║
+║  warranty tracking ("pump has run 12,000 hours").                ║
+║                                                                 ║
+║  Preset = 28,800,000 ms (8 hours). .DN goes TRUE at shift end.  ║
+║  Reset at shift change via PB_FaultReset (rung 7, RES).         ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(STS_InspectionCycleActive)RTO(TMR_AccumulatedShiftRunTime,28800000,?);]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: CTU — Count Up Counter                                 ║
+║  CTU(CounterName, Preset, Accumulator)                           ║
+║  - Each FALSE→TRUE transition of the rung increments .ACC by 1  ║
+║  - .ACC >= Preset → .DN=1                                        ║
+║  - .ACC > 2,147,483,647 → .OV=1 (overflow — wraps to negative)  ║
+║                                                                 ║
+║  HERE: Count every completed measurement window as one part.     ║
+║  The rung goes TRUE when the window finishes, stays TRUE until   ║
+║  next scan? NO — the rung goes FALSE when the part leaves the    ║
+║  sensor (TMR_MeasurementWindow.DN drops), creating a FALSE→TRUE  ║
+║  edge on the NEXT part. CTU counts edges, not "rung TRUE time."  ║
+║                                                                 ║
+║  WAIT — this logic has a subtle issue. Let me explain:          ║
+║  The CTU counts FALSE→TRUE edges of the ENTIRE rung condition.   ║
+║  If TMR_MeasurementWindow.DN stays TRUE for many scans, the      ║
+║  CTU only counts ONCE (first FALSE→TRUE edge). It does NOT       ║
+║  count every scan. This is correct behavior for counting parts.  ║
+║                                                                 ║
+║  Preset = 2,000,000,000 (effectively unlimited — only .OV       ║
+║  protects against overflow).                                     ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_MeasurementWindow.DN)CTU(CTR_TotalParts,2000000000,?);]]></Text>
+</Rung>
+
+<Rung Number="5" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: CTD — Count Down Counter                               ║
+║  CTD(CounterName, Preset, Accumulator)                           ║
+║  - Preset = STARTING value (loaded when rung first goes TRUE)   ║
+║  - Each FALSE→TRUE edge DECREMENTS .ACC by 1                     ║
+║  - .ACC <= 0 → .DN=1 (batch complete!)                           ║
+║  - .ACC < -2,147,483,648 → .UN=1 (underflow)                     ║
+║                                                                 ║
+║  HERE: Count down from batch size. Each completed inspection     ║
+║  decrements. When .ACC=0, .DN=1 → batch is finished.             ║
+║                                                                 ║
+║  USE CASE: "Produce 100 of this part, then stop and signal      ║
+║  the operator." Batch processing, kit building, order fulfillment.║
+║                                                                 ║
+║  Note: The CTD preset must be loaded initially. In production,   ║
+║  you'd use MOV to copy CFG_BatchSize_TotalParts into             ║
+║  CTR_BatchRemaining.PRE when a new batch starts.                 ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(STS_InspectionCycleComplete)CTD(CTR_BatchRemaining,100,?);]]></Text>
+</Rung>
+
+<Rung Number="6" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: CONDITIONAL COUNT (CTU with precondition)              ║
+║  Only count if MeasurementWindow is done AND the part passed     ║
+║  inspection (STS_WeightWithinTolerance=1).                       ║
+║                                                                 ║
+║  The two XIC contacts in series = AND logic: both conditions     ║
+║  must be TRUE for the CTU to see the edge.                       ║
+║                                                                 ║
+║  This is how you create "categorized counters" — separate       ║
+║  counters for pass, fail-under, fail-over, etc.                  ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_MeasurementWindow.DN)XIC(STS_WeightWithinTolerance)CTU(CTR_GoodParts,2000000000,?);]]></Text>
+</Rung>
+
+<Rung Number="7" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: RES — Reset Timer/Counter                              ║
+║  RES(TimerOrCounterName) immediately sets .ACC=0 and clears     ║
+║  all status bits (.DN, .TT, .EN, .OV, .UN).                     ║
+║                                                                 ║
+║  Parallel branches reset MULTIPLE timers/counters in one rung.  ║
+║  Trigger: PB_FaultReset pressed (shift change).                 ║
+║                                                                 ║
+║  IMPORTANT: RES only works on the specific TIMER/COUNTER named. ║
+║  It does NOT affect tags that COPY from the timer .ACC.         ║
+║  You must manually reset any "shadow" DINT tags too.            ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(PB_FaultReset)[RES(TMR_AccumulatedShiftRunTime),RES(CTR_TotalParts),RES(CTR_GoodParts)];]]></Text>
+</Rung>
+
+<Rung Number="8" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: READING TIMER STATUS BITS IN LOGIC                     ║
+║  TMR_SettleDelay.TT (Timer Timing) = TRUE while the timer is    ║
+║  actively counting (rung TRUE AND .ACC < .PRE).                  ║
+║                                                                 ║
+║  Use .TT to light a "timing" indicator on the HMI.               ║
+║  Use .DN to trigger actions when the timer expires.              ║
+║  Use .EN to know if the timer's rung condition is TRUE.          ║
+║                                                                 ║
+║  STATUS BIT QUICK REFERENCE:                                     ║
+║  .EN = rung is TRUE (timer could be timing or done)              ║
+║  .TT = rung is TRUE AND timer hasn't finished yet                ║
+║  .DN = timer has finished (.ACC >= .PRE)                         ║
+║  So: .EN = .TT OR .DN  (enabled = timing OR done)               ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_SettleDelay.TT)OTE(STS_ProgramLocalFlag);]]></Text>
+</Rung>
+
+<Rung Number="9" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: COUNTER OVERFLOW PROTECTION                            ║
+║  CTR_TotalParts.OV (Overflow) = TRUE when .ACC exceeded         ║
+║  2,147,483,647 and wrapped to negative. This is a DATA LOSS     ║
+║  event — the counter value is now garbage.                       ║
+║                                                                 ║
+║  HERE: Latch an alarm so maintenance knows to reset the counter. ║
+║                                                                 ║
+║  BEST PRACTICE: Set your counter preset to slightly below        ║
+║  2.1 billion, OR periodically RES the counter (e.g., at shift    ║
+║  change), OR store the count in a DINT and reset the counter     ║
+║  before overflow.                                                ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(CTR_TotalParts.OV)OTL(ALM_CounterOverflowWarning);]]></Text>
+</Rung>
+
+<Rung Number="10" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: SELF-RESETTING TIMER (Free-Running Pulse Generator)    ║
+║  XIO(TMR_TenSecondPulse.DN) — when timer is NOT done, allow     ║
+║  the TON to run. When .DN=1, XIO opens → TON rung goes FALSE   ║
+║  → .DN resets to 0 → XIO closes → TON starts again.            ║
+║                                                                 ║
+║  This creates a continuous 10-second pulse: .DN=1 for one scan  ║
+║  every 10 seconds. Used as a "heartbeat" for periodic tasks.    ║
+║                                                                 ║
+║  PATTERN: XIO(Timer.DN) TON(Timer, Period, ?)                   ║
+║  This is the STANDARD way to create repeating pulses in ladder. ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIO(TMR_TenSecondPulse.DN)TON(TMR_TenSecondPulse,10000,?);]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+
+<Routine Name="Routine_MathCompare" Type="RLL">
+<Description><![CDATA[MATH & COMPARISON ROUTINE. Arithmetic: ADD, SUB, MUL, DIV, CPT, MOD, SQR, ABS. Comparison: EQU, NEQ, GRT, LES, GEQ, LEQ, LIM, CMP.]]></Description>
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: ADD — Addition                                         ║
+║  ADD(SourceA, SourceB, Destination) → Dest = A + B              ║
+║                                                                 ║
+║  HERE: During the measurement window, accumulate raw weight     ║
+║  readings. Each scan, ADD 0 to the accumulator (placeholder —    ║
+║  in production you'd add an analog input value here).            ║
+║                                                                 ║
+║  DATA TYPE NOTE: ADD with DINT operands gives DINT result.      ║
+║  ADD with REAL operands gives REAL result. Mixing types may     ║
+║  cause compile warnings or unexpected truncation.               ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_MeasurementWindow.TT)ADD(CALC_PartWeightRaw_Integer,10,CALC_PartWeightRaw_Integer);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: DIV — Division (INTEGER vs REAL)                       ║
+║  DIV(SourceA, SourceB, Destination) → Dest = A / B              ║
+║                                                                 ║
+║  CRITICAL: DINT/DINT = DINT (truncated!). 5/2 = 2, NOT 2.5!    ║
+║  REAL/REAL = REAL. 5.0/2.0 = 2.5.                               ║
+║                                                                 ║
+║  HERE: Convert raw integer weight to grams (REAL).              ║
+║  Raw integer is in centigrams (grams × 100).                    ║
+║  Dividing by 100.0 (REAL) produces a REAL result.               ║
+║                                                                 ║
+║  If we divided by 100 (DINT), we'd get truncated grams.         ║
+║  Always use REAL divisors when you need decimal places.         ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_MeasurementWindow.DN)DIV(CALC_PartWeightRaw_Integer,100.0,CALC_PartWeight_Grams);]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: SUB — Subtraction                                      ║
+║  SUB(SourceA, SourceB, Destination) → Dest = A - B              ║
+║                                                                 ║
+║  HERE: Net good parts = GoodParts - RejectParts.                 ║
+║  If rejects > goods, result is negative (process problem).      ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(STS_InspectionCycleComplete)SUB(CTR_GoodPartsThisShift,CTR_RejectPartsThisShift,CALC_GoodMinusReject);]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: MUL — Multiplication                                   ║
+║  MUL(SourceA, SourceB, Destination) → Dest = A * B              ║
+║                                                                 ║
+║  HERE: Calculate parts-per-hour numerator.                       ║
+║  ProductionRate = PartCount * 3600 (seconds per hour).           ║
+║  This will be divided by elapsed seconds in the next rung.      ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_TenSecondPulse.DN)MUL(CTR_TotalPartsProduced,CST_SecondsPerHour,CALC_ProductionRate_PartsPerHour);]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: DIV with ZERO-GUARD (GRT precondition)                 ║
+║  GRT(ShiftRunTime.ACC, 0) checks that elapsed time > 0.         ║
+║  If we divided by zero, the PLC would MAJOR FAULT.              ║
+║  ALWAYS guard division operations with a >0 check.              ║
+║                                                                 ║
+║  HERE: ProductionRate = (PartCount * 3600) / ElapsedSeconds.    ║
+║  This gives instantaneous parts-per-hour rate.                   ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_TenSecondPulse.DN)GRT(TMR_AccumulatedShiftRunTime.ACC,0)DIV(CALC_ProductionRate_PartsPerHour,TMR_AccumulatedShiftRunTime.ACC,CALC_ProductionRate_PartsPerHour);]]></Text>
+</Rung>
+
+<Rung Number="5" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: CPT — Compute (Expression Math)                        ║
+║  CPT(Destination, Expression) evaluates a formula in one step.  ║
+║  Instead of chaining ADD/MUL/DIV across 4 rungs, CPT does it    ║
+║  all at once. Much cleaner for complex formulas.                ║
+║                                                                 ║
+║  EXPRESSION SYNTAX: Standard math operators + - * / ** |        ║
+║  Functions: ABS(), SQRT(), SIN(), COS(), TAN(), LOG(), LN()     ║
+║                                                                 ║
+║  HERE: OEE Availability = (PartCount * TargetWeight) /           ║
+║        (ShiftTarget * TargetWeight).                             ║
+║  This is a simplified example — real OEE uses actual run time   ║
+║  vs planned production time.                                     ║
+║                                                                 ║
+║  WHEN TO USE CPT vs individual instructions:                     ║
+║  - CPT: complex formulas, many operations, readability           ║
+║  - Individual: simple A+B, clearer for maintenance techs        ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_TenSecondPulse.DN)CPT(CALC_OEE_Availability,(CTR_TotalPartsProduced * CFG_TargetPartWeight_Grams) / (CFG_ShiftTarget_TotalParts * CFG_TargetPartWeight_Grams));]]></Text>
+</Rung>
+
+<Rung Number="6" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: MOD — Modulo (Remainder after Division)                ║
+║  MOD(A, B, Dest) → Dest = A % B (remainder of A/B)              ║
+║                                                                 ║
+║  HERE: Check if total parts is even or odd.                     ║
+║  CALC_EvenOdd_Remainder = 0 → even, 1 → odd.                    ║
+║                                                                 ║
+║  OTHER MOD USES:                                                ║
+║  - Round-robin scheduling: MOD(PartCount, 4) → 0,1,2,3 rotates  ║
+║  - Timed actions every Nth second: MOD(Seconds, 10)=0           ║
+║  - Array wrap: MOD(Index, ArraySize) for circular buffers       ║
+║  - Parity checks, day-of-week calculations, etc.                ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(STS_InspectionCycleComplete)MOD(CTR_TotalPartsProduced,2,CALC_EvenOdd_Remainder);]]></Text>
+</Rung>
+
+<Rung Number="7" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: SQR — Square Root                                      ║
+║  SQR(Source, Dest) → Dest = sqrt(Source)                        ║
+║  Source must be >= 0. Negative source = minor fault.             ║
+║                                                                 ║
+║  HERE: sqrt of part weight (demonstration — not physically       ║
+║  meaningful for weight, but shows the instruction).              ║
+║  Real use: RMS calculations, standard deviation, distance.      ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_TenSecondPulse.DN)GRT(CALC_PartWeight_Grams,0.0)SQR(CALC_PartWeight_Grams,CALC_WeightDeviation_Grams);]]></Text>
+</Rung>
+
+<Rung Number="8" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: ABS — Absolute Value                                   ║
+║  ABS(Source, Dest) → Dest = |Source| (always positive)          ║
+║                                                                 ║
+║  HERE: Two-step calculation for weight deviation.                ║
+║  Step 1: SUB — difference = measured - target (could be +/-)    ║
+║  Step 2: ABS — deviation = |difference| (always positive)       ║
+║                                                                 ║
+║  The deviation is then compared against tolerance to determine   ║
+║  pass/fail. Using ABS means we don't care if it's over or under  ║
+║  — we just care HOW FAR from target it is.                      ║
+║                                                                 ║
+║  This is a two-instruction chain on ONE rung: SUB runs first,   ║
+║  its result feeds into ABS. Instructions execute left-to-right   ║
+║  within a rung.                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_MeasurementWindow.DN)SUB(CALC_PartWeight_Grams,CFG_TargetPartWeight_Grams,CALC_WeightDeviation_Grams)ABS(CALC_WeightDeviation_Grams,CALC_WeightDeviation_Grams);]]></Text>
+</Rung>
+
+<Rung Number="9" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: EQU — Equal Comparison                                 ║
+║  EQU(SourceA, SourceB) → TRUE when A == B                       ║
+║                                                                 ║
+║  HERE: Check if even/odd remainder equals 0 (even count).       ║
+║  EQU is placed INLINE on the rung — it acts like a contact.     ║
+║  TRUE → rung continues to the right. FALSE → rung stops.       ║
+║                                                                 ║
+║  COMPARISONS AS CONTACTS: All comparison instructions (EQU,     ║
+║  NEQ, GRT, LES, GEQ, LEQ, LIM, CMP) can be used as contacts     ║
+║  in the middle of a rung. They evaluate TRUE/FALSE and pass     ║
+║  or block the "power flow" accordingly.                         ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[EQU(CALC_EvenOdd_Remainder,0)OTE(STS_ProgramLocalFlag);]]></Text>
+</Rung>
+
+<Rung Number="10" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: NEQ — Not Equal Comparison                             ║
+║  NEQ(SourceA, SourceB) → TRUE when A != B                       ║
+║                                                                 ║
+║  HERE: Flag when measured weight differs from target.            ║
+║  In practice, this is almost always TRUE (exact equality is     ║
+║  rare with REAL values). Use tolerance checks instead.          ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[NEQ(CALC_PartWeight_Grams,CFG_TargetPartWeight_Grams)OTE(STS_ProgramLocalFlag);]]></Text>
+</Rung>
+
+<Rung Number="11" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: GRT + LES — Range Check (Window Comparator)            ║
+║  GRT(A, B) = A > B    LES(A, B) = A < B                         ║
+║                                                                 ║
+║  HERE: Check if deviation exceeds tolerance (FAIL condition).   ║
+║  If deviation > tolerance → part is OUT of spec → FAIL.         ║
+║  STS_WeightWithinTolerance is set FALSE by this rung.           ║
+║                                                                 ║
+║  For a WINDOW check (within range), chain:                       ║
+║  GEQ(Weight, LowLimit) LEQ(Weight, HighLimit) → PASS            ║
+║  This requires both comparisons TRUE.                            ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_MeasurementWindow.DN)GRT(CALC_WeightDeviation_Grams,CFG_WeightTolerance_PlusMinusGrams)OTE(STS_ProgramLocalFlag);]]></Text>
+</Rung>
+
+<Rung Number="12" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: GEQ + LEQ — Inclusive Comparisons                      ║
+║  GEQ = Greater-than-or-Equal. LEQ = Less-than-or-Equal.          ║
+║  Use these when the boundary value IS acceptable.                ║
+║                                                                 ║
+║  HERE: Individual under/over checks for detailed diagnostics.   ║
+║  STS_WeightUnderTarget: Weight < (Target - Tolerance)            ║
+║  STS_WeightOverTarget:  Weight > (Target + Tolerance)            ║
+║                                                                 ║
+║  This gives THREE possible states instead of just pass/fail:    ║
+║  - Under: part too light (missing material, short shot)         ║
+║  - Pass:  within tolerance (good part)                          ║
+║  - Over:  part too heavy (excess material, flash)               ║
+║                                                                 ║
+║  Used to route rejects to different bins for root cause        ║
+║  analysis. Underweight parts suggest one problem; overweight    ║
+║  parts suggest a different problem.                             ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_MeasurementWindow.DN)LES(CALC_PartWeight_Grams,CFG_TargetPartWeight_Grams)OTE(STS_WeightUnderTarget);]]></Text>
+</Rung>
+
+<Rung Number="13" Type="N">
+<Comment><![CDATA[Check for overweight: measured weight > target weight. Used in combination with UnderTarget to categorize rejects.]]></Comment>
+<Text><![CDATA[XIC(TMR_MeasurementWindow.DN)GRT(CALC_PartWeight_Grams,CFG_TargetPartWeight_Grams)OTE(STS_WeightOverTarget);]]></Text>
+</Rung>
+
+<Rung Number="14" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: LIM — Limit Test (Single-Instruction Window Check)     ║
+║  LIM(LowLimit, Test, HighLimit) → TRUE if Low <= Test <= High   ║
+║                                                                 ║
+║  HERE: Check if part weight is between 245.0 and 255.0 grams.   ║
+║  This is the single-instruction equivalent of:                   ║
+║  GEQ(Weight, 245.0) LEQ(Weight, 255.0)                          ║
+║                                                                 ║
+║  WARNING: If LowLimit > HighLimit, LIM becomes an "outside"     ║
+║  test — TRUE when Test is OUTSIDE the range. This is confusing  ║
+║  but sometimes useful. ALWAYS ensure Low <= High for window.    ║
+║                                                                 ║
+║  WHY USE LIM? Cleaner than GEQ+LEQ pair. Single instruction.    ║
+║  Maintenance techs understand "limit test" intuitively.         ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[LIM(245.0,CALC_PartWeight_Grams,255.0)OTE(STS_WeightWithinTolerance);]]></Text>
+</Rung>
+
+<Rung Number="15" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: CMP — Comparison Expression                            ║
+║  CMP(expression) → TRUE when expression evaluates to TRUE       ║
+║  More flexible than individual EQU/GRT/LES instructions.        ║
+║                                                                 ║
+║  HERE: CMP(PartWeight > TargetWeight + Tolerance)               ║
+║  This checks for overweight using a mathematical expression.    ║
+║  You can write ANY boolean expression inside CMP().             ║
+║                                                                 ║
+║  CMP vs individual instructions:                                ║
+║  - CMP: complex expressions, multiple comparisons in one        ║
+║  - Individual: simpler, easier for maintenance to understand    ║
+║  - Both compile to the same machine code — no speed difference  ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[CMP(CALC_PartWeight_Grams > (CFG_TargetPartWeight_Grams + CFG_WeightTolerance_PlusMinusGrams))OTE(STS_ProgramLocalFlag);]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+
+<Routine Name="Routine_MoveData" Type="RLL">
+<Description><![CDATA[MOVE & DATA HANDLING ROUTINE. MOV, COP, CPS, CLR, indirect addressing with array[index].]]></Description>
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: MOV — Move Value                                       ║
+║  MOV(Source, Destination) copies Source value to Destination.   ║
+║  Works with all atomic data types (BOOL, DINT, REAL, etc.).     ║
+║  For UDTs, MOV a single member, not the whole UDT.              ║
+║                                                                 ║
+║  HERE: Log the total part count into the current inspection     ║
+║  record when the cycle completes. This stamps each record       ║
+║  with a unique ID.                                              ║
+║                                                                 ║
+║  MOV works for SINT→DINT (automatic promotion), but not for     ║
+║  DINT→SINT (would truncate). Be mindful of data sizes.          ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(STS_InspectionCycleComplete)MOV(CTR_TotalPartsProduced,Part_CurrentInspection.RecordID);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: MOV from Input to UDT Member                           ║
+║  Store the measured weight into the current part's UDT record.  ║
+║  Part_CurrentInspection.MeasuredWeight_Grams is accessed with   ║
+║  DOT NOTATION: TagName.MemberName.                              ║
+║                                                                 ║
+║  UDT members behave like regular tags — you can MOV to them,    ║
+║  use them in math, compare them, etc.                           ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_MeasurementWindow.DN)MOV(CALC_PartWeight_Grams,Part_CurrentInspection.MeasuredWeight_Grams);]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: COP — Copy Block (array copy)                          ║
+║  COP(Source, Dest, Length) copies Length elements.               ║
+║  Length is in DESTINATION elements (not bytes!).                 ║
+║                                                                 ║
+║  HERE: Copy all 8 shift report values to the hourly counts      ║
+║  array. This snapshots production data for later analysis.      ║
+║                                                                 ║
+║  WARNING 1: COP does NOT check data types. Copying DINT to      ║
+║  REAL copies raw bits, producing garbage values.                ║
+║  Source and Dest must be SAME type, or use CPS with caution.    ║
+║                                                                 ║
+║  WARNING 2: COP can be interrupted mid-copy by a periodic       ║
+║  task or I/O update. If the source changes during the copy,     ║
+║  the destination will be corrupted. Use CPS for atomic copies.  ║
+║                                                                 ║
+║  COP vs FLL: COP copies source→dest. FLL fills dest with a      ║
+║  single source value repeated. Use FLL to initialize arrays.    ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(PB_FaultReset)COP(ARR_ShiftReportValues[0],ARR_HourlyProductionCounts[0],8);]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: CPS — Synchronous Copy (Atomic, Interrupt-Safe)        ║
+║  CPS(Source, Dest, Length) — identical syntax to COP.           ║
+║  DIFFERENCE: CPS disables interrupts during the copy,            ║
+║  guaranteeing the destination is a CONSISTENT SNAPSHOT.          ║
+║                                                                 ║
+║  WHEN TO USE CPS:                                                ║
+║  - Copying multi-element arrays that could be modified by        ║
+║    a periodic task or I/O module during the copy                 ║
+║  - Copying UDTs with many members (same risk)                    ║
+║  - Copying data shared between tasks (produced/consumed tags)   ║
+║                                                                 ║
+║  WHEN COP IS FINE:                                               ║
+║  - Source is a constant or rarely-changing value                ║
+║  - Single-element copy (Length=1)                               ║
+║  - Source won't change during the scan (same task scope)        ║
+║                                                                 ║
+║  HERE: Safely copy the current part record into the history     ║
+║  array. CPS guarantees the history entry is a self-consistent   ║
+║  snapshot, even if another task modifies Part_CurrentInspection  ║
+║  mid-copy.                                                       ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_MeasurementWindow.DN)CPS(Part_CurrentInspection,ARR_PartInspectionHistory[0],1);]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: CLR — Clear Value (Set to Zero)                        ║
+║  CLR(Destination) sets the tag to 0 (for numeric types).        ║
+║  Equivalent to MOV(0, Destination) but more explicit intent.    ║
+║                                                                 ║
+║  HERE: Reset the current part's weight at the start of a new    ║
+║  cycle. Ensures stale data from the previous part isn't used.   ║
+║                                                                 ║
+║  CLR works on: SINT, INT, DINT, REAL, BOOL (sets to 0).        ║
+║  Does NOT work on: TIMER, COUNTER, STRING, UDTs (use MOV or    ║
+║  COP from a zeroed-out UDT instead).                            ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(STS_InspectionCycleActive)CLR(Part_CurrentInspection.MeasuredWeight_Grams);]]></Text>
+</Rung>
+
+<Rung Number="5" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: INDIRECT / INDEXED ADDRESSING                          ║
+║  ARR_ShiftReportValues[BIT_ForLoopIndex] accesses the array     ║
+║  element at position BIT_ForLoopIndex.                           ║
+║                                                                 ║
+║  As BIT_ForLoopIndex changes (0→1→2→...→7), different array    ║
+║  elements are accessed. This is how you iterate arrays in       ║
+║  ladder without hardcoding each element.                         ║
+║                                                                 ║
+║  HERE: Store the production rate into a rotating slot.           ║
+║  Combined with a FOR/NXT loop, you can iterate all 8 slots.     ║
+║                                                                 ║
+║  SAFETY: Always bounds-check your index before using it!         ║
+║  LIM(0, BIT_ForLoopIndex, 7) — if index is out of bounds,       ║
+║  the PLC will major fault.                                       ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(TMR_TenSecondPulse.DN)LIM(0,BIT_ForLoopIndex,7)MOV(CALC_ProductionRate_PartsPerHour,ARR_ShiftReportValues[BIT_ForLoopIndex]);]]></Text>
+</Rung>
+
+<Rung Number="6" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: COP Between UDT Instances                              ║
+║  COP(SourceUDT, DestUDTElement, 1) copies all members of a     ║
+║  UDT to another UDT of the SAME TYPE. Length=1 means "one       ║
+║  UDT element" (not one byte).                                    ║
+║                                                                 ║
+║  HERE: Snapshot the current part record into position 0 of      ║
+║  the history array. This is a "shift register" pattern —        ║
+║  in production you'd shift all elements down before inserting.  ║
+║                                                                 ║
+║  NOTE: This copies ALL UDT members at once (RecordID, Weight,   ║
+║  Tolerance, ResultCode, Duration, Timestamp). Much cleaner than ║
+║  MOV-ing each member individually.                               ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(STS_InspectionCycleComplete)COP(Part_CurrentInspection,ARR_PartInspectionHistory[0],1);]]></Text>
+</Rung>
+
+<Rung Number="7" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: CLR on Array Base Element (Clears First Element Only)  ║
+║  CLR(HourlyCount[0]) clears only element [0], not the whole     ║
+║  array. To clear the entire array, use a FOR/NXT loop or FLL.  ║
+║                                                                 ║
+║  FLL instruction (not used here): FLL(Source, Dest, Length)     ║
+║  fills Length elements with Source value.                        ║
+║  Example: FLL(0, HourlyCount[0], 24) fills all 24 with 0.      ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(PB_FaultReset)CLR(ARR_HourlyProductionCounts[0]);]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+
+<Routine Name="Routine_ProgramControl" Type="RLL">
+<Description><![CDATA[PROGRAM CONTROL ROUTINE. JMP/LBL (conditional skip), FOR/NXT (iteration), RET (early return).]]></Description>
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: JMP/LBL — Unconditional Jump                           ║
+║  JMP("MyLabel") skips all rungs between JMP and LBL("MyLabel"). ║
+║  This is an UNCONDITIONAL jump — it always skips.               ║
+║                                                                 ║
+║  HERE: Skip the FOR/NXT demonstration rungs. In a real project, ║
+║  you might jump past debug/test rungs that aren't needed in      ║
+║  production, or jump to an error handler.                        ║
+║                                                                 ║
+║  WARNING: Never JMP backward — this creates an INFINITE LOOP    ║
+║  that will watchdog-fault the PLC. JMP forward ONLY.            ║
+║  For loops, use FOR/NXT.                                         ║
+║                                                                 ║
+║  LABEL NAMES: Case-sensitive, up to 40 characters.              ║
+║  Each LBL must have a unique name within the routine.           ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[JMP(Label_SkipForward);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[THIS RUNG IS SKIPPED by the JMP above. Any rungs between JMP and its matching LBL are dead code — they never execute.]]></Comment>
+<Text><![CDATA[NOP;]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: LBL — Label (Jump Target)                              ║
+║  This is the landing point for JMP("Label_SkipForward") above.  ║
+║  Execution resumes here. The label itself is a "no-op" — it     ║
+║  doesn't consume scan time, it just marks a position.           ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[LBL(Label_SkipForward);]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: CONDITIONAL JMP (Debug/Feature Toggle)                 ║
+║  XIC(BIT_SkipDebugSection) makes the JMP CONDITIONAL:           ║
+║  - BIT_SkipDebugSection=1 → jump occurs (skip debug section)    ║
+║  - BIT_SkipDebugSection=0 → jump does NOT occur (run normally)  ║
+║                                                                 ║
+║  This is how you implement FEATURE TOGGLES: one bit controls    ║
+║  whether a code section executes. Useful for:                    ║
+║  - Debug/logging code that's only active during commissioning   ║
+║  - Optional features enabled by recipe/config                    ║
+║  - Maintenance bypasses for troubleshooting                     ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIC(BIT_SkipDebugSection)JMP(Label_SkipDebugSection);]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[These rungs are conditionally skipped. They execute when BIT_SkipDebugSection=0. This is where you'd put optional debug/troubleshooting logic.]]></Comment>
+<Text><![CDATA[NOP;]]></Text>
+</Rung>
+
+<Rung Number="5" Type="N">
+<Comment><![CDATA[LBL for the conditional JMP above.]]></Comment>
+<Text><![CDATA[LBL(Label_SkipDebugSection);]]></Text>
+</Rung>
+
+<Rung Number="6" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: FOR/NXT — For-Next Loop                                ║
+║  FOR(IndexTag, Start, Stop, Step) repeats rungs until NXT.      ║
+║  - IndexTag must be DINT type                                    ║
+║  - Start: initial index value (inclusive)                        ║
+║  - Stop: final index value (inclusive)                           ║
+║  - Step: increment per iteration (usually 1)                     ║
+║                                                                 ║
+║  HERE: Iterate i = 0 to 23, clearing each ARR_HourlyProduction   ║
+║  element to 0. This clears the entire 24-element array.         ║
+║                                                                 ║
+║  CRITICAL: FOR/NXT loops consume SCAN TIME proportional to      ║
+║  iterations × body complexity. A loop of 1,000,000 iterations   ║
+║  WILL watchdog-fault the PLC. Keep loops small (<1000 typical). ║
+║                                                                 ║
+║  The FOR rung AND the NXT rung count as ONE rung each.          ║
+║  Everything between FOR and NXT is the loop body.               ║
+║                                                                 ║
+║  TRACE: i=0→CLR(HourlyCount[0])→i=1→CLR(HourlyCount[1])→...    ║
+║  ...→i=23→CLR(HourlyCount[23])→i=24 (exceeds Stop)→exit loop.  ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[FOR(BIT_ForLoopIndex,0,23,1)CLR(ARR_HourlyProductionCounts[BIT_ForLoopIndex])NXT;]]></Text>
+</Rung>
+
+<Rung Number="7" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: FOR/NXT with Conditional Logic Inside Loop             ║
+║  The loop ALWAYS iterates 24 times. The GRT inside is checked   ║
+║  each iteration but doesn't affect loop flow.                    ║
+║                                                                 ║
+║  HERE: For each hourly slot, if the count > 0, add it to the    ║
+║  report accumulator. If count = 0, skip the ADD (but the loop   ║
+║  still advances to the next index).                              ║
+║                                                                 ║
+║  This is how you "filter within a loop" in ladder.              ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[FOR(BIT_ForLoopIndex,0,23,1)GRT(ARR_HourlyProductionCounts[BIT_ForLoopIndex],0)ADD(ARR_HourlyProductionCounts[BIT_ForLoopIndex],ARR_ShiftReportValues[BIT_ForLoopIndex],ARR_ShiftReportValues[BIT_ForLoopIndex])NXT;]]></Text>
+</Rung>
+
+<Rung Number="8" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: RET — Return (Early Exit from Subroutine)              ║
+║  RET() immediately exits THIS routine and returns to the caller  ║
+║  (the JSR that invoked it). Remaining rungs are NOT executed.    ║
+║                                                                 ║
+║  HERE: If E-Stop is pressed, exit immediately — don't run the   ║
+║  rest of this routine. This is a GUARD CLAUSE pattern.          ║
+║                                                                 ║
+║  WARNING: RET only works in subroutines called via JSR.         ║
+║  Using RET in the MainRoutine will MAJOR FAULT the controller.  ║
+║  Only use RET in routines that are JSR'd into.                  ║
+║                                                                 ║
+║  WARNING 2: RET does NOT stop other routines. The caller        ║
+║  continues executing the rung AFTER the JSR. RET only exits     ║
+║  THIS ONE routine and returns control to the caller.            ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[XIO(PB_EmergencyStop)RET();]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+
+<Routine Name="Routine_StructuredTextDemo" Type="ST">
+<Description><![CDATA[
+STRUCTURED TEXT DEMO — The same concepts as the ladder routines, written in
+IEC 61131-3 Structured Text. ST excels at: complex math, string handling,
+CASE/state machines, FOR loops, and anything with heavy computation.
+Key syntax: := assignment, = comparison, ; statement terminator,
+IF/THEN/ELSIF/ELSE/END_IF, CASE/OF/END_CASE, FOR/TO/BY/DO/END_FOR.
+]]></Description>
+<STContent>
+<![CDATA[
+(* ╔══════════════════════════════════════════════════════════════════════════╗
+   ║  STRUCTURED TEXT (ST) — IEC 61131-3 Language                             ║
+   ║  Same logic concepts, different syntax.                                  ║
+   ║                                                                          ║
+   ║  KEY DIFFERENCES FROM LADDER:                                            ║
+   ║  - := means ASSIGNMENT (like MOV). = means COMPARISON (like EQU).       ║
+   ║    This is the #1 beginner mistake — using = when you mean :=.          ║
+   ║  - Every statement ends with ; (semicolon).                               ║
+   ║  - Use (* comment *) for multi-line, // for single-line.                 ║
+   ║  - ST is case-insensitive: IF and if are the same.                       ║
+   ║  - Indentation is for readability only — the compiler ignores it.        ║
+   ║                                                                          ║
+   ║  WHEN TO USE ST OVER LADDER:                                             ║
+   ║  - Complex math formulas (CPT in ladder, but ST is cleaner)              ║
+   ║  - String manipulation (CONCAT, FIND, DELETE, INSERT)                    ║
+   ║  - State machines with many states (CASE is cleaner than nested rungs)   ║
+   ║  - Communication protocol handling (ASCII parsing)                       ║
+   ║  - Array processing with FOR loops                                      ║
+   ║  - Anything where ladder would take 50+ rungs                            ║
+   ║                                                                          ║
+   ║  WHEN TO STAY WITH LADDER:                                               ║
+   ║  - Simple boolean logic (start/stop, interlock chains)                   ║
+   ║  - Anything maintenance techs need to troubleshoot                       ║
+   ║  - Machine sequencing where visual rung flow aids debugging              ║
+   ╚══════════════════════════════════════════════════════════════════════════╝ *)
+
+(* ── BIT LOGIC IN ST ────────────────────────────────────────────────────────
+   In ladder, boolean logic is visual: contacts in series = AND, branches = OR.
+   In ST, you write it as logical expressions with AND, OR, NOT keywords.
+   The result is the same — choose the language that's more readable for
+   the specific logic you're writing. ───────────────────────────────────── *)
+
+(* SEAL-IN CIRCUIT (Start/Stop) in ST:
+   This is the ST equivalent of the seal-in rung in Routine_BitLogic.
+   IF StartPB is pressed AND SystemReady is already on (seal), THEN
+   keep SystemReady on, UNLESS StopPB or EStop is pressed. *)
+IF PB_StartCycle OR STS_SystemReady THEN
+    (* The seal: if Start is pressed OR already running... *)
+    IF NOT PB_StopCycle AND PB_EmergencyStop AND STS_SystemPowered THEN
+        STS_SystemReady := 1;   (* ...then stay on *)
+    ELSE
+        STS_SystemReady := 0;   (* ...otherwise turn off *)
+    END_IF;
+ELSE
+    STS_SystemReady := 0;
+END_IF;
+
+(* LATCH equivalent: OTL in ladder → persistent assignment in ST.
+   In ladder: XIO(PB_EmergencyStop) OTL(ALM_EmergencyStopLatched);
+   In ST: we check the condition, and if TRUE, set the bit.
+   But ST has no native latch — the bit would clear next scan when
+   the condition is FALSE. So we use the bit ITSELF as part of the
+   condition (self-sealing pattern, same as the hardware seal-in). *)
+IF NOT PB_EmergencyStop OR ALM_EmergencyStopLatched THEN
+    (* E-Stop pressed OR alarm already latched → keep it latched *)
+    IF PB_FaultReset THEN
+        ALM_EmergencyStopLatched := 0;  (* Reset clears the latch *)
+    ELSE
+        ALM_EmergencyStopLatched := 1;  (* Otherwise, stay latched *)
+    END_IF;
+END_IF;
+
+(* ONE-SHOT in ST: Compare current value to previous-scan value.
+   BIT_OneShotStore_PartEdge holds the "last scan's value."
+   ONS fires when: current=TRUE AND previous=FALSE (rising edge). *)
+IF SEN_PartAtInspectionStation AND NOT BIT_OneShotStore_PartEdge THEN
+    STS_ProgramLocalFlag := 1;   (* One-shot pulse for exactly this scan *)
+ELSE
+    STS_ProgramLocalFlag := 0;
+END_IF;
+BIT_OneShotStore_PartEdge := SEN_PartAtInspectionStation; (* Save for next scan *)
+
+(* AND logic (series contacts in ladder):
+   All conditions must be TRUE for the cycle to be active. *)
+STS_InspectionCycleActive := SEN_SafetyGateClosed 
+                            AND PB_EmergencyStop     (* XIO = TRUE when tag=1 *) 
+                            AND STS_SystemReady 
+                            AND STS_MachineInAnyMode;
+
+(* OR logic (parallel branches in ladder):
+   Machine is active if in manual OR auto mode. *)
+STS_MachineInAnyMode := SEL_ManualModeActive OR SEL_AutoModeActive;
+
+(* ── TIMERS IN ST ───────────────────────────────────────────────────────────
+   In ST, timers are called as FUNCTION BLOCKS.
+   Syntax: TONR(TimerName, Preset, Accumulator);
+   The timer's status bits (.DN, .TT, .EN, .ACC) are then available.
+   NOTE: In Studio 5000 ST, the exact timer call syntax varies. The pattern
+   below is conceptual — check the instruction help (F1) for your version. ─ *)
+
+(* TON equivalent: *)
+(* TON(TMR_SettleDelay, CFG_InspectionDelay_Milliseconds, 0); *)
+
+(* Read timer status bits: *)
+(* IF TMR_SettleDelay.DN THEN ... END_IF; *)
+
+(* ── COUNTERS IN ST ─────────────────────────────────────────────────────────
+   Same pattern as timers — function block call, then check .DN/.ACC. ────── *)
+
+(* CTU equivalent: *)
+(* IF TMR_MeasurementWindow.DN THEN
+       CTU(CTR_TotalParts, 2000000000, 0);
+   END_IF; *)
+
+(* ── MATH IN ST (where ST really shines!) ───────────────────────────────────
+   Math in ST is natural — just write the formula. No ADD/SUB/MUL/DIV blocks
+   needed. This is the #1 reason to use ST: complex calculations. ────────── *)
+
+(* DIV with REAL conversion (ST makes type conversion explicit): *)
+CALC_PartWeight_Grams := DINT_TO_REAL(CALC_PartWeightRaw_Integer) / 100.0;
+
+(* ABS and subtraction in one expression: *)
+CALC_WeightDeviation_Grams := ABS(CALC_PartWeight_Grams - CFG_TargetPartWeight_Grams);
+
+(* OEE calculations — three formulas in three lines: *)
+IF TMR_AccumulatedShiftRunTime.ACC > 0 THEN
+    CALC_OEE_Availability := DINT_TO_REAL(CTR_TotalPartsProduced) 
+                           / DINT_TO_REAL(CFG_ShiftTarget_TotalParts);
+    
+    CALC_OEE_Performance := (DINT_TO_REAL(CTR_TotalPartsProduced) * CST_SecondsPerHour)
+                          / DINT_TO_REAL(TMR_AccumulatedShiftRunTime.ACC);
+ELSE
+    CALC_OEE_Availability := 0.0;
+    CALC_OEE_Performance := 0.0;
+END_IF;
+
+(* Quality with zero-guard: *)
+IF (CTR_GoodPartsThisShift + CTR_RejectPartsThisShift) > 0 THEN
+    CALC_OEE_Quality := DINT_TO_REAL(CTR_GoodPartsThisShift)
+                      / DINT_TO_REAL(CTR_GoodPartsThisShift + CTR_RejectPartsThisShift);
+ELSE
+    CALC_OEE_Quality := 0.0;
+END_IF;
+
+(* Production rate — one clean formula: *)
+CALC_ProductionRate_PartsPerHour := (DINT_TO_REAL(CTR_TotalPartsProduced) * 3600.0)
+                                  / DINT_TO_REAL(TMR_AccumulatedShiftRunTime.ACC);
+
+(* Modulo: check even/odd *) 
+CALC_EvenOdd_Remainder := CTR_TotalPartsProduced MOD 2;
+
+(* ── COMPARISONS IN ST ──────────────────────────────────────────────────────
+   Comparisons in ST use standard operators: =, <>, >, <, >=, <=.
+   They evaluate to BOOL and can be used directly in IF/ELSIF conditions. ─── *)
+
+(* EQU equivalent: *)
+IF CALC_EvenOdd_Remainder = 0 THEN
+    STS_ProgramLocalFlag := 1;  (* Part count is even *)
+ELSE
+    STS_ProgramLocalFlag := 0;
+END_IF;
+
+(* NEQ equivalent: *)
+STS_ProgramLocalFlag := (CALC_PartWeight_Grams <> CFG_TargetPartWeight_Grams);
+
+(* GRT + LES range check: *)
+IF CALC_WeightDeviation_Grams > CFG_WeightTolerance_PlusMinusGrams THEN
+    STS_ProgramLocalFlag := 1;  (* Out of tolerance — FAIL *)
+END_IF;
+
+(* GEQ + LEQ window check (pass condition): *)
+IF (CALC_PartWeight_Grams >= (CFG_TargetPartWeight_Grams - CFG_WeightTolerance_PlusMinusGrams))
+   AND (CALC_PartWeight_Grams <= (CFG_TargetPartWeight_Grams + CFG_WeightTolerance_PlusMinusGrams)) THEN
+    STS_WeightWithinTolerance := 1;   (* Within spec — PASS *)
+ELSE
+    STS_WeightWithinTolerance := 0;   (* Out of spec — FAIL *)
+END_IF;
+
+(* CMP equivalent — any boolean expression works inline: *)
+STS_ProgramLocalFlag := (CALC_PartWeight_Grams > (CFG_TargetPartWeight_Grams + CFG_WeightTolerance_PlusMinusGrams));
+
+(* ── DATA HANDLING IN ST ──────────────────────────────────────────────────── *)
+
+(* MOV equivalent: simple assignment *)
+Part_CurrentInspection.RecordID := CTR_TotalPartsProduced;
+Part_CurrentInspection.MeasuredWeight_Grams := CALC_PartWeight_Grams;
+
+(* COP equivalent: loop-based array copy *)
+FOR BIT_ForLoopIndex := 0 TO 7 BY 1 DO
+    ARR_HourlyProductionCounts[BIT_ForLoopIndex] := 0;  (* Initialize to zero *)
+END_FOR;
+
+(* CLR equivalent: *)
+Part_CurrentInspection.MeasuredWeight_Grams := 0.0;
+
+(* ── PROGRAM CONTROL IN ST ────────────────────────────────────────────────── *)
+
+(* CASE statement (multi-way branch):
+   This is MUCH cleaner than nested IFs, especially for state machines.
+   Evaluate Part_CurrentInspection.InspectionResultCode and execute
+   the matching branch. The ELSE branch catches unexpected values. *)
+CASE Part_CurrentInspection.InspectionResultCode OF
+    0:  (* Pending — do nothing *)
+        ;
+    1:  (* PASS — increment good parts *)
+        CTR_GoodPartsThisShift := CTR_GoodPartsThisShift + 1;
+    2, 3:  (* FAIL (Under or Over) — increment rejects *)
+        CTR_RejectPartsThisShift := CTR_RejectPartsThisShift + 1;
+    4:  (* FAIL Other *)
+        CTR_RejectPartsThisShift := CTR_RejectPartsThisShift + 1;
+ELSE
+    (* Unexpected code — log an alarm *)
+    ALM_EmergencyStopLatched := 1;
+END_CASE;
+
+(* FOR loop — identical to FOR/NXT in ladder, much cleaner in ST.
+   This iterates all 24 hourly slots and accumulates non-zero counts. *)
+FOR BIT_ForLoopIndex := 0 TO 23 BY 1 DO
+    IF ARR_HourlyProductionCounts[BIT_ForLoopIndex] > 0 THEN
+        ARR_ShiftReportValues[BIT_ForLoopIndex] := 
+            ARR_ShiftReportValues[BIT_ForLoopIndex] 
+            + DINT_TO_REAL(ARR_HourlyProductionCounts[BIT_ForLoopIndex]);
+    END_IF;
+END_FOR;
+
+(* RET equivalent: RETURN statement exits the routine immediately. *)
+IF NOT PB_EmergencyStop THEN
+    RETURN;  (* E-Stop pressed — exit this routine NOW *)
+END_IF;
+
+(* Guard clause pattern: check preconditions at the top, RETURN if any fail.
+   This keeps the main logic un-nested and easier to read. *)
+
+]]>
+</STContent>
+</Routine>
+
+</Routines>
+</Program>
+
+<Program Name="Program_PeriodicCalculations" TestEdits="false" MainRoutineName="Routine_PeriodicOEE" Disabled="false" UseAsFolder="false">
+<Description><![CDATA[
+PERIODIC CALCULATION PROGRAM — Scheduled in PeriodicTask (100ms).
+Periodic tasks run at FIXED INTERVALS, interrupting the continuous task.
+Ideal for: PID loops, motion control, communication polling, real-time metrics.
+This program calculates OEE metrics on a 10-second heartbeat.
+]]></Description>
+<Tags >
+<Tag Name="CTR_PeriodicScanCount" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[PROGRAM-SCOPED: Increments each time this periodic task executes (every 100ms). Counts to 100 then resets (10-second cycle).]]></Description>
+</Tag>
+<Tag Name="STS_TenSecondUpdateFlag" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[PROGRAM-SCOPED: TRUE every 100 scans (10 seconds). Triggers OEE recalculation.]]></Description>
+</Tag>
+</Tags>
+<Routines >
+<Routine Name="Routine_PeriodicOEE" Type="RLL">
+<Description><![CDATA[Periodic OEE calculation — executes every 100ms. Demonstrates periodic task programming, scan counting, timed execution within a task, and real-time metric calculation.]]></Description>
+<RLLContent>
+
+<Rung Number="0" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: SCAN COUNTER (in a periodic task)                      ║
+║  ADD 1 to the counter each execution. Since this routine runs   ║
+║  every 100ms, CTR_PeriodicScanCount increments 10 times/second. ║
+║                                                                 ║
+║  This is how you create TIMED logic inside a periodic task:      ║
+║  count scans, trigger action every Nth scan.                    ║
+║                                                                 ║
+║  Task period = 100ms. 100 scans = 10,000ms = 10 seconds.        ║
+║  So every 100 scans, we recalculate OEE metrics.                ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[ADD(CTR_PeriodicScanCount,1,CTR_PeriodicScanCount);]]></Text>
+</Rung>
+
+<Rung Number="1" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: MOD-BASED TIMED EXECUTION                              ║
+║  EQU(CTR_PeriodicScanCount, 100) — TRUE exactly once every      ║
+║  100 scans (10 seconds).                                         ║
+║                                                                 ║
+║  When TRUE: reset scan counter to 0 AND calculate OEE metrics.  ║
+║  The parallel branch [MOV(0,...), MUL(...)] shows how to do     ║
+║  TWO things when a condition is met.                             ║
+║                                                                 ║
+║  This is the STANDARD PATTERN for "do something every N seconds" ║
+║  inside a periodic task.                                         ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[EQU(CTR_PeriodicScanCount,100)[MOV(0,CTR_PeriodicScanCount),MUL(CTR_TotalPartsProduced,CST_SecondsPerHour,CALC_ProductionRate_PartsPerHour)];]]></Text>
+</Rung>
+
+<Rung Number="2" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: ZERO-GUARDED DIVISION (Quality metric)                 ║
+║  GRT(GoodParts, 0) prevents division by zero.                   ║
+║  CPT calculates: GoodParts / (GoodParts + RejectParts).          ║
+║                                                                 ║
+║  OEE Quality = good parts / total parts.                        ║
+║  1.0 = 100% quality (no rejects). 0.95 = 95% (5% reject rate). ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[GRT(CTR_GoodPartsThisShift,0)CPT(CALC_OEE_Quality,DINT_TO_REAL(CTR_GoodPartsThisShift) / DINT_TO_REAL(CTR_GoodPartsThisShift + CTR_RejectPartsThisShift));]]></Text>
+</Rung>
+
+<Rung Number="3" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: OEE PERFORMANCE — Actual vs Ideal Rate                 ║
+║  CPT with numerator and denominator expression.                  ║
+║                                                                 ║
+║  OEE Performance = ActualParts / (ShiftTarget × ElapsedHours).   ║
+║  - If we've produced 250 of 500 target at 4 hours (50% time),   ║
+║    Performance = 250 / (500 × 0.5) = 250 / 250 = 1.0 (100%).   ║
+║  - If we've produced 200: Performance = 200/250 = 0.8 (80%).   ║
+║                                                                 ║
+║  ElapsedHours = ShiftRunTime.ACC (ms) / 3,600,000 (ms/hour).    ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[GRT(TMR_AccumulatedShiftRunTime.ACC,0)CPT(CALC_OEE_Performance,CTR_TotalPartsProduced / (CFG_ShiftTarget_TotalParts * (TMR_AccumulatedShiftRunTime.ACC / CST_MillisecondsPerHour)));]]></Text>
+</Rung>
+
+<Rung Number="4" Type="N">
+<Comment><![CDATA[
+╔══════════════════════════════════════════════════════════════════╗
+║  CONCEPT: STORE METRICS TO ARRAY for Trending/HMI                ║
+║  Each 10-second cycle, store the current production rate into    ║
+║  the shift report array. The index rotates 0→1→...→7→0.         ║
+║                                                                 ║
+║  The LIM guards against out-of-bounds index (would fault PLC).  ║
+║  Without LIM: if CTR_PeriodicScanCount exceeds 7, the indirect   ║
+║  address ARR_ShiftReportValues[8] would MAJOR FAULT.             ║
+╚══════════════════════════════════════════════════════════════════╝
+]]></Comment>
+<Text><![CDATA[LIM(0,CTR_PeriodicScanCount,7)MOV(CALC_ProductionRate_PartsPerHour,ARR_ShiftReportValues[CTR_PeriodicScanCount]);]]></Text>
+</Rung>
+
+</RLLContent>
+</Routine>
+</Routines>
+</Program>
+
+</Programs>
+<Tasks >
+<Task Name="MainTask" Type="CONTINUOUS" Priority="10" Watchdog="500" DisableUpdateOutputs="false" InhibitTask="false">
+<Description><![CDATA[
+CONTINUOUS TASK — Runs MainProgram in an endless loop, as fast as the CPU allows.
+Priority 10 (default). Watchdog 500ms — if any single scan exceeds 500ms, the
+controller major-faults. This is the DEFAULT task type for most logic.
+Scan sequence: Read Inputs → Execute Programs → Write Outputs → Housekeeping → repeat.
+]]></Description>
+<ScheduledPrograms>
+<ScheduledProgram Name="MainProgram"/>
+</ScheduledPrograms>
+</Task>
+<Task Name="PeriodicTask" Type="PERIODIC" Rate="100" Priority="5" Watchdog="100" DisableUpdateOutputs="false" InhibitTask="false">
+<Description><![CDATA[
+PERIODIC TASK — Executes Program_PeriodicCalculations every 100 milliseconds.
+Priority 5 (HIGHER than MainTask's 10 — lower number = higher priority).
+This task will INTERRUPT the continuous task mid-scan, execute to completion,
+then return control to the continuous task.
+
+Watchdog 100ms = must finish within ONE period. If the logic takes longer than
+100ms, the controller faults. Keep periodic task logic LEAN.
+
+USE CASES: PID loops (need consistent sample rate), motion control, Ethernet/IP
+communication polling, real-time production metrics.
+]]></Description>
+<ScheduledPrograms>
+<ScheduledProgram Name="Program_PeriodicCalculations"/>
+</ScheduledPrograms>
+</Task>
+</Tasks>
+<CST MasterID="0"/>
+<WallClockTime LocalTimeAdjustment="0" TimeZone="0"/>
+<Trends >
+<Trend Name="Trend_ProductionMetrics" SampleMode="Periodic" SamplePeriod="1000" SamplePointsMaximum="3600" Enable="true" SampleOnChange="false" SampleOutputMask="0000_0000">
+<Description><![CDATA[
+TREND: Production Metrics — Samples every 1000ms, stores 3600 points (1 hour).
+Pens: ProductionRate (red), TotalParts (blue), GoodParts (green).
+Open via: Controller Organizer → Trends → Trend_ProductionMetrics → double-click.
+]]></Description>
+<Tag Name="CALC_ProductionRate_PartsPerHour"/>
+<Tag Name="CTR_TotalPartsProduced"/>
+<Tag Name="CTR_GoodPartsThisShift"/>
+</Trend>
+<Trend Name="Trend_OEE_Metrics" SampleMode="Periodic" SamplePeriod="5000" SamplePointsMaximum="720" Enable="true" SampleOnChange="false" SampleOutputMask="0000_0000">
+<Description><![CDATA[
+TREND: OEE Metrics — Samples every 5 seconds, 720 points = 1 hour.
+Pens: Availability (blue), Performance (orange), Quality (green).
+World-class OEE target: all three > 85% (0.85).
+]]></Description>
+<Tag Name="CALC_OEE_Availability"/>
+<Tag Name="CALC_OEE_Performance"/>
+<Tag Name="CALC_OEE_Quality"/>
+</Trend>
+</Trends>
+<DataLogs/>
+<TimeSynchronize Priority1="128" Priority2="128" PTPEnable="false"/>
+</Controller>
+</RSLogix5000Content>
