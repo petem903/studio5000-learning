@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetName="LearnPLC_NoHardware" TargetType="Controller" ContainsContext="false" Owner="Open Source Training" ExportDate="Wed Jun 24 16:00:00 2026" ExportOptions="NoRawData L5KData DecoratedData ForceProtectedEncoding AllProjDocTrans">
+<Controller Use="Target" Name="LearnPLC_NoHardware" ProcessorType="1756-L72" MajorRev="37" MinorRev="11" TimeSlice="20" ShareUnusedTimeSlice="1" ProjectCreationDate="Wed Jun 24 16:00:00 2026" LastModifiedDate="Wed Jun 24 16:00:00 2026" SFCExecutionControl="CurrentActive" SFCRestartPosition="MostRecent" SFCLastScan="DontScan" ProjectSN="16#0000_0000" MatchProjectToController="false" CanUseRPIFromProducer="false" InhibitAutomaticFirmwareUpdate="0" PassThroughConfiguration="EnabledWithAppend" DownloadProjectDocumentationAndExtendedProperties="true" DownloadProjectCustomProperties="true" ReportMinorOverflow="false">
+<RedundancyInfo Enabled="false" KeepTestEditsOnSwitchOver="false" IOMemoryPadPercentage="90" DataTablePadPercentage="50"/>
+<Security Code="0" ChangesToDetect="16#ffff_ffff_ffff_ffff"/>
+<SafetyInfo/>
+<DataTypes/>
+<Modules>
+<Module Name="Local" CatalogNumber="1756-L72" Vendor="1" ProductType="14" ProductCode="93" Major="37" Minor="11" ParentModule="Local" ParentModPortId="1" Inhibited="false" MajorFault="true">
+<EKey State="ExactMatch"/>
+<Ports>
+<Port Id="1" Address="0" Type="ICP" Upstream="false">
+<Bus Size="10"/>
+</Port>
+</Ports>
+</Module>
+</Modules>
+<AddOnInstructionDefinitions/>
+<Tags>
+<Tag Name="Sim_Bit_StartCommand" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[THIS IS JUST A BIT IN MEMORY. No physical button. Flip to 1 = you "pressed Start." Flip to 0 = you "let go." Open Controller Tags, find this tag, click the Value cell, type 1, press Enter.]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="Sim_Bit_StopCommand" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[ANOTHER BIT. Default 0. Flip to 1 = "pressed Stop." XIO checks "is this bit 0?" So when bit=0, XIO is TRUE (rung works). When bit=1, XIO is FALSE (rung breaks). This is how NC (normally-closed) stop buttons work.]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="Sim_Bit_EmergencyStopOK" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[E-STOP BIT. Default 1 = safe. Flip to 0 = "E-Stop pressed." XIC on this tag: TRUE when 1 (safe = run), FALSE when 0 (danger = stop). Fail-safe: if wire breaks, bit=0, machine stops.]]></Description>
+<Data Format="L5K"><![CDATA[1]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="1"/></Data>
+</Tag>
+<Tag Name="Sim_Bit_Reset" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[RESET BIT. Flip to 1 = "pressed Reset." Clears counters and batch-done flag.]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="Sim_Bit_PartAtSensor" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[PART SENSOR BIT. Flip to 1 = "a box is in front of the sensor." Flip to 0 = "no box." Used by the counter routine to count parts. YOU are the sensor.]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="Sim_Bit_GateClosed" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[SAFETY GATE BIT. Default 1 = gate closed and locked. Flip to 0 = "someone opened the gate." XIC = TRUE when gate is closed (1). In series with motor output - gate open = motor stops.]]></Description>
+<Data Format="L5K"><![CDATA[1]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="1"/></Data>
+</Tag>
+<Tag Name="Sim_Bit_MotorRun" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[THE MOTOR OUTPUT BIT. When 1, the conveyor is "running." When 0, "stopped." Watch this bit to see if your logic is working. In real life, this bit would drive a physical motor contactor. Here, just watch the number.]]></Description>
+<Data Format="L5K"><![CDATA[0]]></Data>
+<Data Format="Decorated"><DataValue DataType="BOOL" Radix="Decimal" Value="0"/></Data>
+</Tag>
+<Tag Name="Sim_Bit_LightGreen" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[GREEN LIGHT BIT. 1 = ON (conveyor running). Mirrors Sim_Bit_MotorRun.]]></Description>
+</Tag>
+<Tag Name="Sim_Bit_LightRed" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[RED LIGHT BIT. 1 = ON (conveyor stopped). Opposite of Green.]]></Description>
+</Tag>
+<Tag Name="Sim_Bit_LightAmber" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[AMBER LIGHT BIT. 1 = ON (batch complete). Turns on when we have made enough parts.]]></Description>
+</Tag>
+<Tag Name="Sim_Bit_RunMemory" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[THE HEART OF THE SEAL-IN CIRCUIT. This bit "remembers" that Start was pressed. When 1 = "conveyor should be running." When 0 = "conveyor should be stopped." Default 0. This is THE most important bit to watch.]]></Description>
+</Tag>
+<Tag Name="Sim_Bit_OneShotStore" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[PRIVATE NOTEPAD for the One-Shot instruction (ONS). The ONS uses this bit to remember what the sensor saw LAST scan. Each ONS needs its OWN unique storage bit - never reuse this.]]></Description>
+</Tag>
+<Tag Name="Sim_Bit_BatchDone" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[FLAG: 1 = "we have produced enough parts, stop the conveyor." Set by Routine 06 when the counter reaches the target number.]]></Description>
+</Tag>
+<Tag Name="Sim_Timer_StartDelay" TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[TIMER (TON): Waits 3000ms (3 seconds) after Start is pressed before allowing the motor to run. Watch .ACC count up in the Tag Editor. When .ACC = 3000, .DN = 1 and motor can start.]]></Description>
+</Tag>
+<Tag Name="Sim_Counter_PartsProduced" TagType="Base" DataType="COUNTER" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[COUNTER (CTU): Counts how many times Sim_Bit_PartAtSensor goes from 0 to 1. Watch .ACC in the Tag Editor. ONS ensures it counts exactly once per toggle, not once per scan.]]></Description>
+</Tag>
+<Tag Name="Sim_Number_BatchSize" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description><![CDATA[CONFIGURATION: How many parts before auto-stop? Change this in the Tag Editor. Try 3 for quick testing, 10 for a longer run. Default 10.]]></Description>
+<Data Format="L5K"><![CDATA[10]]></Data>
+<Data Format="Decorated"><DataValue DataType="DINT" Radix="Decimal" Value="10"/></Data>
+</Tag>
+</Tags>
+<Programs>
+<Program Name="MainProgram" TestEdits="false" MainRoutineName="Routine_00_ReadMeFirst" Disabled="false" UseAsFolder="false">
+<Description><![CDATA[LEARN PLC PROGRAMMING WITH JUST YOUR MOUSE. No hardware. No PLC. No wires. 7 teaching routines.]]></Description>
+<Tags/>
+<Routines>
+<Routine Name="Routine_00_ReadMeFirst" Type="RLL">
+<Description><![CDATA[HOW TO USE THIS PROJECT: Read the rung comment. It explains bits, the scan cycle, and how to test.]]></Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment><![CDATA[
+======================================================================
+HOW TO LEARN PLCs WITHOUT HARDWARE - READ THIS FIRST
+======================================================================
+
+WHAT IS A BIT? A bit is just a switch that is either UP (1) or DOWN (0).
+Every tag that starts with "Sim_Bit_" is a switch in the PLC's memory.
+You flip switches by changing values in the Controller Tags editor.
+
+WHAT IS A RUNG? A rung is a RULE: "IF these switches are in certain
+positions, THEN set that switch to a certain position."
+
+HOW TO TEST: Double-click "Controller Tags" on the left. Find the tag.
+Click its Value cell. Type 1 or 0. Press Enter. That's how you
+"press buttons" and "sense parts." Your mouse is the hardware.
+
+IMPORTANT: Without a real PLC or RSLogix Emulate 5000 connected, the
+rungs will NOT execute automatically. You must manually set both
+input AND output tags to simulate what the PLC would do. This project
+teaches you the LOGIC - you trace through it with your brain and
+your mouse. When you get access to a real PLC or emulator, the same
+logic runs automatically thousands of times per second.
+
+START HERE: Open Routine_01_SealInCircuit and read the rung comment.
+======================================================================
+]]></Comment>
+<Text><![CDATA[NOP;]]></Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="Routine_01_SealInCircuit" Type="RLL">
+<Description><![CDATA[THE SEAL-IN CIRCUIT - The most important pattern in PLC programming. One Start press = output stays ON. One Stop press = output turns OFF.]]></Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment><![CDATA[
+======================================================================
+THE SEAL-IN CIRCUIT (Start/Stop Pattern)
+======================================================================
+
+WHAT THIS RUNG DOES: Press Start once -> RunMemory turns ON and STAYS ON
+(even after you let go). Press Stop once -> RunMemory turns OFF.
+
+HOW TO READ THE RUNG STRUCTURE:
+
+       TOP BRANCH: XIC(Start)         "Is Start pressed?"
+                       OR
+       BOTTOM BRANCH: XIC(RunMemory)  "Are we already running?"
+
+       Then in SERIES: XIO(Stop)      "Is Stop NOT pressed?"
+
+       Then: OTE(RunMemory)           "Set RunMemory to match"
+
+THE MAGIC: RunMemory appears TWICE on this rung -
+  - On the LEFT as XIC(RunMemory) = "read what RunMemory was last scan"
+  - On the RIGHT as OTE(RunMemory) = "write RunMemory for next scan"
+
+  This is NOT a contradiction. The XIC reads the OLD value. The OTE
+  writes the NEW value. They happen at different times in the scan.
+
+HOW TO TEST (manually, since you may not have a PLC connected):
+
+  Step 1: All zeros. Start=0, Stop=0, RunMemory=0.
+          Top branch: FALSE (Start not pressed)
+          Bottom branch: FALSE (RunMemory is 0)
+          Result: RunMemory stays 0. Conveyor is OFF.
+
+  Step 2: Set Start=1 (you "pressed Start").
+          Top branch: TRUE! XIO(Stop)=TRUE. Rung=TRUE.
+          RunMemory becomes 1. Conveyor is ON.
+
+  Step 3: Set Start=0 (you "released Start").
+          Top branch: FALSE. BUT... RunMemory is now 1!
+          Bottom branch: TRUE! (the seal-in)
+          Rung is still TRUE. RunMemory STAYS 1.
+          The conveyor keeps running. The "seal" is holding.
+
+  Step 4: Set Stop=1 (you "pressed Stop").
+          XIO(Stop): Stop=1, so XIO=FALSE. Rung breaks.
+          RunMemory becomes 0. Conveyor stops.
+          BOTH branches now FALSE. Ready for next cycle.
+
+WHY THIS MATTERS: Every motor starter, pump, fan, and conveyor in
+every factory uses this exact pattern. It is THE fundamental building
+block of industrial automation.
+
+PARALLEL BRANCHES [A, B] = OR logic. At least one must be TRUE.
+SERIES CONTACTS next to each other = AND logic. All must be TRUE.
+======================================================================
+]]></Comment>
+<Text><![CDATA[[XIC(Sim_Bit_StartCommand),XIC(Sim_Bit_RunMemory)]XIO(Sim_Bit_StopCommand)OTE(Sim_Bit_RunMemory);]]></Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="Routine_02_AddSafety" Type="RLL">
+<Description><![CDATA[ADDING SAFETY - E-Stop and safety gate in series with the motor output. Series = AND = ALL conditions must be TRUE for the motor to run.]]></Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment><![CDATA[
+======================================================================
+SAFETY INTERLOCKS: Series Contacts = AND Logic
+======================================================================
+
+This rung takes the RunMemory from Routine 01 and adds safety checks:
+
+  XIC(RunMemory) -- XIC(EmergencyStopOK) -- XIC(GateClosed) -- OTE(MotorRun)
+
+For the motor to run, ALL THREE must be TRUE:
+  1. RunMemory = 1  (seal-in says "we should be running")
+  2. EmergencyStopOK = 1  (E-Stop is NOT pressed = safe)
+  3. GateClosed = 1  (safety gate is closed and locked)
+
+If ANY one goes to 0, the motor stops immediately.
+
+TEST IT:
+  1. With RunMemory=1, EStop=1, Gate=1 -> MotorRun should be 1
+  2. Flip EmergencyStopOK to 0 -> MotorRun should be 0 (E-Stop!)
+  3. Flip it back to 1 -> MotorRun goes back to 1 (RunMemory is still 1)
+  4. Flip GateClosed to 0 -> MotorRun should be 0 (gate opened!)
+  5. Flip it back to 1 -> MotorRun goes back to 1
+
+NOTE: RunMemory itself is not broken by E-Stop or gate in this rung.
+To require pressing Start again after an E-Stop, you would put the
+E-Stop XIC inside the seal-in rung (Routine 01), not just here.
+======================================================================
+]]></Comment>
+<Text><![CDATA[XIC(Sim_Bit_RunMemory)XIC(Sim_Bit_EmergencyStopOK)XIC(Sim_Bit_GateClosed)OTE(Sim_Bit_MotorRun);]]></Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="Routine_03_Timer_StartDelay" Type="RLL">
+<Description><![CDATA[TIMERS - TON (Timer On Delay). The conveyor waits 3 seconds after Start before moving. Learn .DN (Done) bit.]]></Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment><![CDATA[
+======================================================================
+TON - TIMER ON DELAY: "Wait 3 seconds, then say GO."
+======================================================================
+
+TON(TimerName, PresetInMilliseconds, AccumulatorStartValue)
+
+When the rung BEFORE the TON is TRUE:
+  - .ACC counts up from 0 toward Preset (3000 = 3 seconds)
+  - When .ACC >= 3000, .DN becomes 1
+  - Timer stops at Preset value, .DN stays 1
+
+When the rung BEFORE the TON goes FALSE:
+  - .ACC resets to 0 immediately
+  - .DN becomes 0 immediately
+
+TIMER BITS YOU CAN USE IN LOGIC:
+  Timer.EN  = Timer is Enabled (rung is TRUE)
+  Timer.TT  = Timer is actively Timing (counting, not done yet)
+  Timer.DN  = Timer is Done (reached Preset)
+  Timer.ACC = Current count (0 to Preset, in milliseconds)
+======================================================================
+]]></Comment>
+<Text><![CDATA[XIC(Sim_Bit_RunMemory)TON(Sim_Timer_StartDelay,3000,?);]]></Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment><![CDATA[
+USING THE TIMER .DN BIT: Only let the motor run AFTER the timer finishes.
+XIC(Timer.DN) = "has the timer finished counting?"
+
+This UPDATES Routine 02's motor output by adding the timer condition.
+Since this routine runs AFTER Routine 02 in the JSR order, this OTE
+"wins" and sets the final value for this scan.
+
+If RunMemory=1 but the timer hasn't finished: MotorRun = 0 (waiting)
+If RunMemory=1 AND timer.DN=1: MotorRun = 1 (running, if safeties OK)
+If RunMemory=0: timer resets, MotorRun = 0 (stopped)
+
+CHANGE THE DELAY: Edit 3000 to 500 (half second) for quick testing,
+or 5000 (5 seconds) for a more realistic delay.
+======================================================================
+]]></Comment>
+<Text><![CDATA[XIC(Sim_Bit_RunMemory)XIC(Sim_Timer_StartDelay.DN)XIC(Sim_Bit_EmergencyStopOK)XIC(Sim_Bit_GateClosed)OTE(Sim_Bit_MotorRun);]]></Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="Routine_04_Counter_Parts" Type="RLL">
+<Description><![CDATA[COUNTERS - CTU (Count Up) counts 0->1 transitions. ONS (One-Shot) makes sure we count once per event, not once per scan.]]></Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment><![CDATA[
+======================================================================
+CTU - COUNT UP COUNTER + ONS ONE-SHOT
+======================================================================
+
+CTU(CounterName, Preset, Accumulator)
+  Each FALSE->TRUE transition increments .ACC by 1.
+  Preset = 999999 (effectively no limit - we stop via comparison).
+
+ONS(StorageBit)
+  Makes the rung TRUE for exactly ONE scan on a FALSE->TRUE edge.
+  Without ONS: the counter would increment EVERY scan while the
+  sensor is 1 (thousands of times per second for one box!).
+
+THE PROBLEM ONS SOLVES:
+  You flip Sim_Bit_PartAtSensor to 1. Without ONS, every scan after
+  that (while it stays 1) would increment the counter. One box =
+  thousands of counts. Wrong!
+
+  With ONS: only the FIRST scan where sensor goes 0->1 increments
+  the counter. After that, ONS blocks the signal until sensor goes
+  back to 0 and then 1 again (next box).
+
+Sim_Bit_OneShotStore is the ONS's PRIVATE notepad. Each ONS needs
+its own unique storage bit. Never reuse it.
+
+TEST IT: Flip PartAtSensor 1->0->1->0->1. Counter.ACC should be 2.
+(The first 0->1 is the initial state, so it counts when you first
+set it to 1. Then each 0->1 after that adds 1.)
+======================================================================
+]]></Comment>
+<Text><![CDATA[XIC(Sim_Bit_PartAtSensor)ONS(Sim_Bit_OneShotStore)CTU(Sim_Counter_PartsProduced,999999,?);]]></Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment><![CDATA[RESET: Flip Sim_Bit_Reset to 1 to clear counter back to 0.]]></Comment>
+<Text><![CDATA[XIC(Sim_Bit_Reset)RES(Sim_Counter_PartsProduced);]]></Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="Routine_05_Decision_AutoStop" Type="RLL">
+<Description><![CDATA[MAKING DECISIONS - GEQ compares counter value to batch size. When enough parts are produced, stop automatically.]]></Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment><![CDATA[
+======================================================================
+GEQ - GREATER THAN OR EQUAL: "Have we made enough parts yet?"
+======================================================================
+
+GEQ(ValueA, ValueB) -> TRUE when A >= B
+
+  A = Sim_Counter_PartsProduced.ACC (how many we have counted)
+  B = Sim_Number_BatchSize (our target, default 10)
+
+  If .ACC >= 10: GEQ is TRUE -> set Sim_Bit_BatchDone = 1
+  If .ACC < 10:  GEQ is FALSE -> set Sim_Bit_BatchDone = 0
+
+OTHER COMPARISONS (all work the same way):
+  EQU(A,B) = A equals B         NEQ(A,B) = A not equal B
+  GRT(A,B) = A greater than B   LES(A,B) = A less than B
+  GEQ(A,B) = A >= B             LEQ(A,B) = A <= B
+
+WHY GEQ AND NOT EQU? GEQ is safer. If something causes the counter
+to skip past the exact target, EQU would never be TRUE and the
+machine would run forever. GEQ catches "reached OR passed."
+
+TEST IT:
+  1. Set Sim_Number_BatchSize to 3 for quick testing.
+  2. Flip PartAtSensor 1->0->1->0->1->0 (three "parts").
+  3. Counter.ACC = 3. GEQ(3,3) = TRUE. Sim_Bit_BatchDone = 1.
+  4. Flip Reset to 1 then 0. Counter=0. Sim_Bit_BatchDone = 0.
+======================================================================
+]]></Comment>
+<Text><![CDATA[GEQ(Sim_Counter_PartsProduced.ACC,Sim_Number_BatchSize)OTE(Sim_Bit_BatchDone);]]></Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment><![CDATA[
+STOP THE CONVEYOR WHEN BATCH IS DONE
+
+This rung UPDATES Routine 01's seal-in circuit. We add
+XIO(Sim_Bit_BatchDone) in series with the seal-in.
+
+When BatchDone = 0 (not done): XIO = TRUE, seal-in works normally.
+When BatchDone = 1 (DONE!): XIO = FALSE, seal-in breaks, RunMemory=0.
+
+Since this OTE on RunMemory runs AFTER Routine 01's OTE, the value
+set here "wins" for this scan. This is called "destructive overwrite"
+and is the standard way to build up logic across multiple routines.]]></Comment>
+<Text><![CDATA[[XIC(Sim_Bit_StartCommand),XIC(Sim_Bit_RunMemory)]XIO(Sim_Bit_StopCommand)XIO(Sim_Bit_BatchDone)OTE(Sim_Bit_RunMemory);]]></Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="Routine_06_StatusLights" Type="RLL">
+<Description><![CDATA[STATUS LIGHTS - Translate internal bits into "lights" the operator can see. Green=RUNNING, Red=STOPPED, Amber=BATCH COMPLETE.]]></Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment><![CDATA[GREEN LIGHT: ON when the motor is running. Simple 1:1 mapping.]]></Comment>
+<Text><![CDATA[XIC(Sim_Bit_MotorRun)OTE(Sim_Bit_LightGreen);]]></Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment><![CDATA[RED LIGHT: ON when motor is NOT running. XIO = opposite of XIC.]]></Comment>
+<Text><![CDATA[XIO(Sim_Bit_MotorRun)OTE(Sim_Bit_LightRed);]]></Text>
+</Rung>
+<Rung Number="2" Type="N">
+<Comment><![CDATA[AMBER LIGHT: ON when batch is done AND motor has stopped. Both conditions in series = AND logic. Tells operator: "Batch complete, machine safely stopped, come get the parts."]]></Comment>
+<Text><![CDATA[XIC(Sim_Bit_BatchDone)XIO(Sim_Bit_MotorRun)OTE(Sim_Bit_LightAmber);]]></Text>
+</Rung>
+</RLLContent>
+</Routine>
+</Routines>
+</Program>
+</Programs>
+<Tasks>
+<Task Name="MainTask" Type="CONTINUOUS" Priority="10" Watchdog="500" DisableUpdateOutputs="false" InhibitTask="false">
+<Description><![CDATA[Continuous task - runs MainProgram endlessly. No hardware required.]]></Description>
+<ScheduledPrograms>
+<ScheduledProgram Name="MainProgram"/>
+</ScheduledPrograms>
+</Task>
+</Tasks>
+<CST MasterID="0"/>
+<WallClockTime LocalTimeAdjustment="0" TimeZone="0"/>
+<Trends/>
+<DataLogs/>
+<TimeSynchronize Priority1="128" Priority2="128" PTPEnable="false"/>
+</Controller>
+</RSLogix5000Content>
