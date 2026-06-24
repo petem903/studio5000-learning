@@ -1,4 +1,4 @@
-# Studio 5000 â€” Open Source Learning Projects
+# Studio 5000 Open Source Learning Projects
 
 > **Learn PLC programming with nothing but Studio 5000 and a mouse. No hardware. No PLC. No wires.**
 
